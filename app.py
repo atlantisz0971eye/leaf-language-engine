@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import csv
+import gc
 import hashlib
 import hmac
 import json
@@ -57,6 +58,11 @@ OPEN_BROWSER = os.environ.get(
 ).lower() in {"1", "true", "yes"}
 ACCESS_PASSWORD = os.environ.get("LEAF_ACCESS_PASSWORD", "").strip()
 MAX_CONCURRENT_JOBS = max(1, int(os.environ.get("LEAF_MAX_CONCURRENT_JOBS", "1")))
+RUBBING_RESOLUTIONS = (2048, 3072, 4096, 6144, 8192)
+MAX_RUBBING_RESOLUTION = max(
+    2048,
+    min(8192, int(os.environ.get("LEAF_MAX_RUBBING_RESOLUTION", "8192"))),
+)
 STYLE_ANALYSIS_CACHE: dict[str, dict] = {}
 BACKGROUND_JOBS: dict[str, dict] = {}
 BACKGROUND_JOB_LOCK = threading.Lock()
@@ -289,7 +295,7 @@ def prepare_colour_document(
     if progress:
         progress(12, "Reading leaf")
     source, silhouette = safe_colour_specimen(sample)
-    resolutions = (2048, 3072, 4096, 6144, 8192)
+    resolutions = RUBBING_RESOLUTIONS
     if progress:
         progress(28, "Measuring capacity")
     capacity = estimate_contour_colour_capacity(
@@ -314,6 +320,19 @@ def prepare_colour_document(
         "texture_coverage": specimen_metadata.get("texture_coverage"),
         "review_recommended": bool(specimen_metadata.get("review_recommended", False)),
     }
+    capacity["runtime_limit"] = {
+        "max_resolution": MAX_RUBBING_RESOLUTION,
+        "safe_mode": MAX_RUBBING_RESOLUTION < max(RUBBING_RESOLUTIONS),
+        "message": (
+            f"This server safely supports leaf-rubbing exports up to {MAX_RUBBING_RESOLUTION}px. "
+            "NMNS vein-graph exports keep their full resolution range."
+        ),
+    }
+    for row in capacity["resolutions"]:
+        row["capacity_exportable"] = bool(row["exportable"])
+        row["runtime_safe"] = int(row["resolution"]) <= MAX_RUBBING_RESOLUTION
+        row["resource_limited"] = not row["runtime_safe"]
+        row["exportable"] = bool(row["exportable"] and row["runtime_safe"])
     if not quality_pass:
         for row in capacity["resolutions"]:
             row["exportable"] = False
@@ -321,6 +340,18 @@ def prepare_colour_document(
         capacity["minimum_safe_resolution"] = None
         capacity["recommendation"] = (
             "The uploaded leaf needs a clearer crop or stronger visible texture before it can carry text."
+        )
+    elif not any(row["exportable"] for row in capacity["resolutions"]):
+        capacity["minimum_safe_resolution"] = None
+        capacity["recommendation"] = (
+            f"This text needs more space than the current server-safe limit of "
+            f"{MAX_RUBBING_RESOLUTION}px. Shorten the text or use an NMNS scan."
+        )
+    else:
+        safe = next(row for row in capacity["resolutions"] if row["exportable"])
+        capacity["minimum_safe_resolution"] = safe["resolution"]
+        capacity["recommendation"] = (
+            f"Use at least {safe['resolution']}px for this text and specimen."
         )
     selected = next(
         (row for row in capacity["resolutions"] if int(row["resolution"]) == int(resolution)),
@@ -526,6 +557,9 @@ def run_colour_job(identifier: str, sample: str, text: str, resolution: int) -> 
             stage="Could not calculate",
             error=f"{type(exc).__name__}: {exc}",
         )
+    finally:
+        # Release large OpenCV arrays promptly on memory-limited cloud containers.
+        gc.collect()
 
 
 def document_cache_path(sample: str, text: str, resolution: int) -> Path:
@@ -971,6 +1005,21 @@ class LeafToolHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/language/status":
             self._json(LanguageDatabase(LANGUAGE_DATABASE).status())
+            return
+        if path == "/api/runtime":
+            self._json(
+                {
+                    "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
+                    "rubbing": {
+                        "resolutions": list(RUBBING_RESOLUTIONS),
+                        "max_resolution": MAX_RUBBING_RESOLUTION,
+                        "safe_mode": MAX_RUBBING_RESOLUTION < max(RUBBING_RESOLUTIONS),
+                    },
+                    "nmns": {
+                        "resolutions": [2048, 4096, 8192, 16384],
+                    },
+                }
+            )
             return
         if path == "/api/colour/specimens":
             self._json(

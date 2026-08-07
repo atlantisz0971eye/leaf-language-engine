@@ -20,7 +20,8 @@ are intentionally separated:
 6. Add `LEAF_ACCESS_PASSWORD` with a long shared team password. The health
    check stays public, while all pages and APIs require that password.
 7. Keep `LEAF_MAX_CONCURRENT_JOBS=1` for the initial four-person test.
-8. Generate a Railway domain and open `/health`. A healthy response reports
+8. On a 1 GB Railway Trial container, set `LEAF_MAX_RUBBING_RESOLUTION=3072`.
+9. Generate a Railway domain and open `/health`. A healthy response reports
    `"status": "ok"`.
 
 The first start copies the curated NMNS and rubbing examples into an empty
@@ -40,7 +41,8 @@ volume. Later deployments add missing seeds but never overwrite user data.
 - Use one Railway service instance because background job state is currently
   held in process memory.
 - Share the team password only with the four project members.
-- Start with a 5 GB volume and 2 GB of memory.
-- Prefer 4096 or 8192 px exports online. Treat 16384 px as an experimental,
-  high-memory export.
+- Railway Trial safe mode supports leaf-rubbing exports up to 3072 px. NMNS
+  vein-graph exports retain their larger output sizes.
+- Upgrade memory or optimize the colour renderer before enabling 4096–8192 px
+  leaf-rubbing exports online.
 - Back up the Railway volume before changing codecs or the stored data layout.

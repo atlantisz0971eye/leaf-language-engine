@@ -6,6 +6,10 @@ const state={
   specimens:[],
   specimen:null,
   document:null,
+  runtime:{
+    rubbing:{resolutions:[2048,3072,4096,6144,8192],max_resolution:8192,safe_mode:false},
+    nmns:{resolutions:[2048,4096,8192,16384]},
+  },
 };
 
 const leafFile=$("#leaf-file");
@@ -82,9 +86,14 @@ function resetDecision(){
 }
 
 function setResolutionOptions(){
-  const values=state.sourceHint==="nmns"?[2048,4096,8192,16384]:[2048,3072,4096,6144,8192];
-  const preferred=state.sourceHint==="nmns"?8192:4096;
-  resolutionSelect.innerHTML=values.map((value)=>`<option value="${value}" ${value===preferred?"selected":""}>${value} px</option>`).join("");
+  const runtime=state.runtime[state.sourceHint]||{};
+  const values=runtime.resolutions||(state.sourceHint==="nmns"?[2048,4096,8192,16384]:[2048,3072,4096,6144,8192]);
+  const maxResolution=state.sourceHint==="nmns"?Math.max(...values):(runtime.max_resolution||Math.max(...values));
+  const preferred=state.sourceHint==="nmns"?8192:Math.min(3072,maxResolution);
+  resolutionSelect.innerHTML=values.map((value)=>{
+    const unavailable=value>maxResolution;
+    return `<option value="${value}" ${value===preferred?"selected":""} ${unavailable?"disabled":""}>${value} px${unavailable?" · unavailable online":""}</option>`;
+  }).join("");
 }
 
 function libraryOption(specimen){
@@ -165,10 +174,12 @@ function choosePipeline(sourceHint){
 }
 
 async function loadLibraries(){
-  const [rubbing,nmns]=await Promise.all([
+  const [rubbing,nmns,runtime]=await Promise.all([
     jsonRequest("/api/colour/specimens"),
     jsonRequest("/api/images"),
+    jsonRequest("/api/runtime"),
   ]);
+  state.runtime={...state.runtime,...runtime};
   state.libraries.rubbing=(rubbing.specimens||[]).map((item)=>({...item,pipeline:"rubbing"}));
   state.libraries.nmns=(nmns.images||[]).filter((item)=>item.ready).map((item)=>({
     ...item,
@@ -217,10 +228,15 @@ function renderCapacity(data){
   const ready=Boolean(data.exportable);
   const nmns=state.sourceHint==="nmns";
   $("#capacity-result").hidden=false;
-  $("#capacity-badge").textContent=ready?"READY":"TOO LARGE";
+  const resourceLimited=Boolean(selected.resource_limited);
+  $("#capacity-badge").textContent=ready?"READY":resourceLimited?"SERVER LIMIT":"TOO LARGE";
   $("#capacity-badge").classList.toggle("fail",!ready);
-  $("#capacity-title").textContent=ready?"Ready to export":"More space needed";
-  $("#capacity-note").textContent=ready?`${selected.resolution}px safely carries this text.`:capacity.recommendation;
+  $("#capacity-title").textContent=ready?"Ready to export":resourceLimited?"Choose a smaller output":"More space needed";
+  $("#capacity-note").textContent=ready
+    ? `${selected.resolution}px safely carries this text.`
+    : resourceLimited
+      ? capacity.runtime_limit?.message||capacity.recommendation
+      : capacity.recommendation;
   $("#text-bytes").textContent=`${capacity.text.utf8_bytes} B`;
   $("#safe-bytes").textContent=`${selected.payload.safe_text_bytes} B`;
   if(nmns){
@@ -231,8 +247,8 @@ function renderCapacity(data){
     $("#vote-count-label").textContent="Redundancy";
   }
   $("#resolution-grid").innerHTML=capacity.resolutions.map((row)=>`
-    <button type="button" data-resolution="${row.resolution}" class="${row.exportable?"ready":""} ${row.resolution===selected.resolution?"selected":""}">
-      ${row.resolution}<br>${row.exportable?"Ready":"Full"}
+    <button type="button" data-resolution="${row.resolution}" ${row.resource_limited?"disabled":""} class="${row.exportable?"ready":""} ${row.resource_limited?"limited":""} ${row.resolution===selected.resolution?"selected":""}">
+      ${row.resolution}<br>${row.resource_limited?"Server limit":row.exportable?"Ready":"Full"}
     </button>`).join("");
   $("#resolution-grid").querySelectorAll("button").forEach((button)=>button.addEventListener("click",()=>{
     resolutionSelect.value=button.dataset.resolution;checkCapacity();
