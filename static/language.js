@@ -6,6 +6,10 @@ const state={
   specimens:[],
   specimen:null,
   document:null,
+  audioContext:null,
+  audio:null,
+  audioResult:null,
+  audioView:"disturbed",
   runtime:{
     rubbing:{resolutions:[2048,3072,4096,6144,8192],max_resolution:8192,safe_mode:false},
     nmns:{resolutions:[2048,4096,8192,16384]},
@@ -19,6 +23,8 @@ const resolutionSelect=$("#resolution-select");
 const analyzeLeafButton=$("#analyze-leaf");
 const capacityButton=$("#check-capacity");
 const exportButton=$("#export-jpg");
+const soundFile=$("#sound-file");
+const applySoundButton=$("#apply-sound");
 
 function sleep(milliseconds){return new Promise((resolve)=>setTimeout(resolve,milliseconds));}
 
@@ -36,6 +42,151 @@ function fileDataUrl(file){
     reader.addEventListener("error",()=>reject(new Error("Could not read the image")));
     reader.readAsDataURL(file);
   });
+}
+
+function percentile(values,ratio){
+  if(!values.length)return 0;
+  const ordered=[...values].sort((a,b)=>a-b);
+  return ordered[Math.max(0,Math.min(ordered.length-1,Math.floor((ordered.length-1)*ratio)))];
+}
+
+function normalizeFrames(frames,key){
+  const values=frames.map((frame)=>frame[key]);
+  const low=percentile(values,.06);
+  const high=percentile(values,.96);
+  const span=Math.max(1e-8,high-low);
+  frames.forEach((frame)=>{frame[key]=Math.max(0,Math.min(1,(frame[key]-low)/span));});
+}
+
+function formatDuration(seconds){
+  const minutes=Math.floor(seconds/60);
+  const remainder=Math.round(seconds-minutes*60);
+  return `${minutes}:${String(remainder).padStart(2,"0")}`;
+}
+
+function resetAudioResult(){
+  state.audioResult=null;
+  state.audioView="disturbed";
+  $("#sound-result").hidden=true;
+  $("#audio-progress").hidden=true;
+  $("#audio-progress-bar").value=0;
+  document.querySelectorAll("[data-monitor]").forEach((button)=>button.classList.toggle("active",button.dataset.monitor==="disturbed"));
+}
+
+function drawSoundWave(){
+  const canvas=$("#sound-wave");
+  const width=Math.max(1,canvas.clientWidth);
+  const height=Math.max(1,canvas.clientHeight);
+  const ratio=Math.min(2,window.devicePixelRatio||1);
+  canvas.width=Math.floor(width*ratio);canvas.height=Math.floor(height*ratio);
+  const context=canvas.getContext("2d");
+  context.scale(ratio,ratio);
+  context.fillStyle="#0b1511";context.fillRect(0,0,width,height);
+  context.strokeStyle="#213a2d";
+  for(let row=1;row<4;row+=1){context.beginPath();context.moveTo(0,height*row/4);context.lineTo(width,height*row/4);context.stroke();}
+  if(!state.audio)return;
+  const palette={energy:"#74c895",peak:"#d2ad52",noise:"#77a9b7"};
+  Object.entries(palette).forEach(([key,color])=>{
+    context.strokeStyle=color;context.lineWidth=1;context.beginPath();
+    state.audio.frames.forEach((frame,index)=>{
+      const x=index/Math.max(1,state.audio.frames.length-1)*width;
+      const y=height-7-frame[key]*(height-14);
+      if(index===0)context.moveTo(x,y);else context.lineTo(x,y);
+    });
+    context.stroke();
+  });
+  context.strokeStyle="#c6525f";
+  state.audio.frames.forEach((frame,index)=>{
+    if(!frame.impact)return;
+    const x=index/Math.max(1,state.audio.frames.length-1)*width;
+    context.beginPath();context.moveTo(x,0);context.lineTo(x,12+frame.impact*22);context.stroke();
+  });
+}
+
+async function analyzeWav(file){
+  resetAudioResult();
+  applySoundButton.disabled=true;
+  $("#sound-file-label").textContent=`Reading ${file.name}…`;
+  try{
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContextClass)throw new Error("This browser cannot analyze WAV audio.");
+    state.audioContext??=new AudioContextClass();
+    const buffer=await state.audioContext.decodeAudioData((await file.arrayBuffer()).slice(0));
+    const channels=buffer.numberOfChannels;
+    const sampleRate=buffer.sampleRate;
+    const stride=Math.max(1,Math.floor(sampleRate/24000));
+    const effectiveRate=sampleRate/stride;
+    const frameSize=1024;
+    const hop=512;
+    const frameCount=Math.max(1,Math.floor((buffer.length/stride-frameSize)/hop)+1);
+    const frames=[];
+    let low=0,lastEnergy=0,lastNoise=0;
+    const lowAlpha=Math.min(1,(2*Math.PI*220)/effectiveRate);
+    for(let frameIndex=0;frameIndex<frameCount;frameIndex+=1){
+      const base=frameIndex*hop*stride;
+      let squares=0,lowSquares=0,highSquares=0,peak=0,crossings=0,previous=0;
+      for(let index=0;index<frameSize;index+=1){
+        const sourceIndex=base+index*stride;
+        if(sourceIndex>=buffer.length)break;
+        let sample=0;
+        for(let channel=0;channel<channels;channel+=1)sample+=buffer.getChannelData(channel)[sourceIndex]/channels;
+        low+=lowAlpha*(sample-low);
+        const high=sample-low;
+        squares+=sample*sample;lowSquares+=low*low;highSquares+=high*high;
+        peak=Math.max(peak,Math.abs(sample));
+        if((sample>=0)!==(previous>=0))crossings+=1;
+        previous=sample;
+      }
+      const energy=Math.sqrt(squares/frameSize);
+      const noise=Math.sqrt(highSquares/frameSize);
+      const flux=Math.max(0,energy-lastEnergy)+Math.max(0,noise-lastNoise)*.55;
+      frames.push({time:frameIndex*hop/effectiveRate,energy,peak,bass:Math.sqrt(lowSquares/frameSize),brightness:Math.min(1,crossings/frameSize*17),noise,flux,impact:0});
+      lastEnergy=energy;lastNoise=noise;
+    }
+    ["energy","peak","bass","brightness","noise","flux"].forEach((key)=>normalizeFrames(frames,key));
+    const fluxGate=percentile(frames.map((frame)=>frame.flux),.9);
+    const energyGate=percentile(frames.map((frame)=>frame.energy),.4);
+    const gap=Math.max(2,Math.floor(.075*effectiveRate/hop));
+    let lastImpact=-gap,impacts=0;
+    for(let index=1;index<frames.length-1;index+=1){
+      const frame=frames[index];
+      if(frame.flux>=fluxGate&&frame.energy>=energyGate&&frame.flux>=frames[index-1].flux&&frame.flux>=frames[index+1].flux&&index-lastImpact>=gap){
+        frame.impact=Math.max(frame.flux,frame.peak*.82);lastImpact=index;impacts+=1;
+      }
+    }
+    state.audio={name:file.name,frames,impacts,duration:buffer.duration,sampleRate};
+    $("#sound-file-label").textContent=file.name;
+    $("#sound-summary").textContent=`${formatDuration(buffer.duration)} · ${frames.length.toLocaleString()} frames · ${impacts} impacts`;
+    applySoundButton.disabled=!state.document?.exportable||state.sourceHint!=="rubbing";
+    drawSoundWave();
+  }catch(error){
+    state.audio=null;
+    $("#sound-file-label").textContent="Could not read WAV";
+    $("#sound-summary").textContent=error.message;
+  }
+}
+
+function quantizedAudio(levels=16,maxFrames=2400){
+  if(!state.audio)return [];
+  const frames=state.audio.frames;
+  const group=Math.max(1,Math.ceil(frames.length/maxFrames));
+  const compact=[];
+  for(let start=0;start<frames.length;start+=group){
+    const slice=frames.slice(start,start+group);
+    const average=(key)=>slice.reduce((sum,frame)=>sum+frame[key],0)/slice.length;
+    const maximum=(key)=>Math.max(...slice.map((frame)=>frame[key]));
+    compact.push({
+      time:slice[0].time,
+      energy:average("energy"),peak:maximum("peak"),bass:average("bass"),
+      brightness:average("brightness"),noise:average("noise"),impact:maximum("impact"),
+    });
+  }
+  return compact.map((frame)=>({
+    time:frame.time,
+    energy:Math.round(frame.energy*(levels-1)),peak:Math.round(frame.peak*(levels-1)),
+    bass:Math.round(frame.bass*(levels-1)),brightness:Math.round(frame.brightness*(levels-1)),
+    noise:Math.round(frame.noise*(levels-1)),impact:frame.impact>0?Math.max(1,Math.round(frame.impact*(levels-1))):0,
+  }));
 }
 
 function progressElements(kind){
@@ -74,6 +225,7 @@ function setStep(step){
 
 function resetDecision(){
   state.document=null;
+  resetAudioResult();
   $("#capacity-result").hidden=true;
   $("#capacity-progress").hidden=true;
   $("#capacity-progress-bar").value=0;
@@ -82,6 +234,9 @@ function resetDecision(){
   $("#encoded-preview").removeAttribute("src");
   exportButton.disabled=true;
   $("#export-status").textContent="Run the capacity check first.";
+  $("#sound-panel").hidden=true;
+  $("#sound-panel").classList.add("locked");
+  applySoundButton.disabled=true;
   setStep(state.specimen?2:1);
 }
 
@@ -170,6 +325,7 @@ function choosePipeline(sourceHint){
     : "Upload a leaf. Check capacity. Export.";
   $("#export-kind").textContent=sourceHint==="nmns"?"Reversible vein PNG":"Reversible pixel JPG";
   exportButton.textContent=sourceHint==="nmns"?"Export PNG":"Export JPG";
+  $("#sound-panel").hidden=true;
   $("#decoder-status").textContent="";
 }
 
@@ -259,10 +415,15 @@ function renderCapacity(data){
     $("#encoded-preview").src=`${data.preview_url}?v=${Date.now()}`;
     exportButton.disabled=false;
     $("#export-status").textContent=nmns?`${selected.resolution}px · vein graph PNG`:`${selected.resolution}px · JPG quality 96`;
+    $("#sound-panel").hidden=nmns;
+    $("#sound-panel").classList.toggle("locked",nmns);
+    applySoundButton.disabled=nmns||!state.audio;
     setStep(3);
   }else{
     $("#export-panel").hidden=true;
+    $("#sound-panel").hidden=true;
     exportButton.disabled=true;
+    applySoundButton.disabled=true;
     setStep(2);
   }
 }
@@ -313,17 +474,105 @@ async function exportCarrier(){
   finally{exportButton.disabled=!state.document?.exportable;}
 }
 
+function soundConfig(){
+  return {
+    semantic_mode:$("#semantic-mode").value,
+    semantic_loss:Number($("#semantic-loss").value)/100,
+    strength:Number($("#sound-strength").value)/100,
+    shift:Number($("#sound-shift").value)/100,
+    erasure:Number($("#sound-erasure").value)/100,
+    flip:Number($("#sound-flip").value)/100,
+    clustering:Number($("#sound-clustering").value)/100,
+  };
+}
+
+function showAudioMonitor(view){
+  if(!state.audioResult)return;
+  state.audioView=view;
+  document.querySelectorAll("[data-monitor]").forEach((button)=>button.classList.toggle("active",button.dataset.monitor===view));
+  const url=state.audioResult.output_urls?.[view];
+  if(url)$("#sound-monitor-image").src=`${url}?v=${Date.now()}`;
+}
+
+function renderAudioResult(result){
+  state.audioResult=result;
+  $("#sound-result").hidden=false;
+  $("#sound-carriers").textContent=Number(result.carrier.recognized_cells).toLocaleString();
+  $("#sound-changed").textContent=Number(result.carrier.changed_cells).toLocaleString();
+  $("#sound-confidence").textContent=`${Number(result.carrier.mean_confidence).toFixed(1)}%`;
+  $("#sound-fidelity").textContent=`${Number(result.semantic?.fidelity??100).toFixed(1)}%`;
+  const valid=Boolean(result.disturbed_decode?.valid);
+  $("#sound-crc").textContent=valid?"VALID":"FAILED";
+  $("#sound-crc").style.color=valid?"var(--green)":"var(--red)";
+  const semantic=result.semantic||{};
+  $("#sound-decode-status").textContent=valid
+    ? `TRANSPORT VALID · ${semantic.source_altered?"SOURCE ALTERED":"SOURCE PRESERVED"} · ${semantic.affected_words||0} words affected${result.resolution?.upgraded?` · auto ${result.resolution.used}px`:""}`
+    : result.decode_error||"PNG read completed, but CRC could not recover the complete text.";
+  const recovered=result.disturbed_decode?.text||"";
+  $("#sound-original-text").value=semantic.source_text||state.document?.text||"";
+  $("#sound-original-text").hidden=false;
+  $("#sound-decoded-text").value=recovered;
+  $("#sound-decoded-text").hidden=!recovered;
+  showAudioMonitor("disturbed");
+  setStep(4);
+}
+
+async function applySound(){
+  if(!state.audio||!state.document?.exportable||state.sourceHint!=="rubbing")return;
+  resetAudioResult();
+  applySoundButton.disabled=true;
+  $("#audio-progress-bar").value=0;
+  setProgress("audio",2,"Preparing carrier");
+  try{
+    const levels=16;
+    const queued=await jsonRequest("/api/jobs/audio-disturbance",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        sample:state.document.sample,
+        text:state.document.text,
+        target_resolution:state.document.selected.resolution,
+        levels,
+        audio_array:quantizedAudio(levels),
+        audio:{name:state.audio.name,duration:state.audio.duration,impacts:state.audio.impacts},
+        config:soundConfig(),
+      }),
+    });
+    renderAudioResult(await pollJob(queued.job_id,"audio"));
+  }catch(error){
+    setProgress("audio",100,"Could not apply sound");
+    $("#sound-summary").textContent=error.message;
+  }finally{
+    applySoundButton.disabled=!state.audio||!state.document?.exportable||state.sourceHint!=="rubbing";
+  }
+}
+
+async function downloadOutput(url,filename){
+  if(!url)return;
+  const response=await fetch(url);
+  if(!response.ok)throw new Error("Download failed");
+  const objectUrl=URL.createObjectURL(await response.blob());
+  const link=document.createElement("a");
+  link.href=objectUrl;link.download=filename;document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
+}
+
 async function decodeImage(){
   const file=$("#decoder-file").files[0];
   if(!file){$("#decoder-status").textContent="Choose an exported JPG or PNG.";return;}
   const png=file.type==="image/png"||file.name.toLowerCase().endsWith(".png");
   $("#decode-image").disabled=true;
-  $("#decoder-status").textContent=png?"Matching vein graph…":"Reading pixel carrier…";
+  $("#decoder-status").textContent="Reading image carrier…";
   try{
     const data=await fileDataUrl(file);
-    const result=await jsonRequest(png?"/api/language/document/decode-png":"/api/language/colour/decode",{
-      method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({filename:file.name,data}),
-    });
+    const request={method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({filename:file.name,data})};
+    let result;
+    try{
+      result=await jsonRequest("/api/language/colour/decode",request);
+    }catch(colourError){
+      if(!png)throw colourError;
+      $("#decoder-status").textContent="Matching NMNS vein graph…";
+      result=await jsonRequest("/api/language/document/decode-png",request);
+    }
     $("#decoder-status").textContent=result.valid?`Valid · text recovered${result.specimen?` · ${result.specimen}`:""}`:"Could not verify this image";
     $("#decoded-text").value=result.text||"";
     $("#decoded-text").hidden=!result.text;
@@ -340,6 +589,44 @@ analyzeLeafButton.addEventListener("click",uploadLeaf);
 capacityButton.addEventListener("click",checkCapacity);
 exportButton.addEventListener("click",exportCarrier);
 $("#decode-image").addEventListener("click",decodeImage);
+soundFile.addEventListener("change",async()=>{
+  const file=soundFile.files[0];
+  if(!file)return;
+  if(!file.name.toLowerCase().endsWith(".wav")){$("#sound-summary").textContent="Choose a WAV file.";return;}
+  if(file.size>64*1024*1024){$("#sound-summary").textContent="The WAV is over 64 MB.";return;}
+  await analyzeWav(file);
+});
+applySoundButton.addEventListener("click",applySound);
+document.querySelectorAll("[data-monitor]").forEach((button)=>button.addEventListener("click",()=>showAudioMonitor(button.dataset.monitor)));
+[
+  ["sound-strength","sound-strength-value"],
+  ["sound-clustering","sound-clustering-value"],
+  ["semantic-loss","semantic-loss-value"],
+  ["sound-shift","sound-shift-value"],
+  ["sound-erasure","sound-erasure-value"],
+  ["sound-flip","sound-flip-value"],
+].forEach(([inputId,valueId])=>{
+  $("#"+inputId).addEventListener("input",()=>{
+    $("#"+valueId).textContent=`${$("#"+inputId).value}%`;
+    if(state.audioResult){resetAudioResult();setStep(3);}
+  });
+});
+$("#semantic-mode").addEventListener("change",()=>{
+  const defaults={preserve:0,trace:6,breakdown:60};
+  $("#semantic-loss").value=defaults[$("#semantic-mode").value];
+  $("#semantic-loss-value").textContent=`${$("#semantic-loss").value}%`;
+  if(state.audioResult){resetAudioResult();setStep(3);}
+});
+$("#export-disturbed").addEventListener("click",()=>{
+  const sample=state.document?.sample||"leaf";
+  downloadOutput(state.audioResult?.output_urls?.disturbed,`${sample}_audio_disturbed.png`).catch((error)=>{$("#sound-decode-status").textContent=error.message;});
+});
+$("#export-audio-report").addEventListener("click",()=>{
+  const sample=state.document?.sample||"leaf";
+  downloadOutput(state.audioResult?.experiment_url,`${sample}_audio_experiment.json`).catch((error)=>{$("#sound-decode-status").textContent=error.message;});
+});
+window.addEventListener("resize",()=>drawSoundWave());
 
 textInput.disabled=true;resolutionSelect.disabled=true;capacityButton.disabled=true;
+drawSoundWave();
 loadLibraries().catch((error)=>{$("#library-count").textContent=error.message;});

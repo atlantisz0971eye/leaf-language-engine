@@ -43,6 +43,9 @@ volume. Later deployments add missing seeds but never overwrite user data.
 - Share the team password only with the four project members.
 - Railway Trial safe mode supports leaf-rubbing exports up to 3072 px. NMNS
   vein-graph exports retain their larger output sizes.
+- WAV feature extraction runs in the browser. Only the compact feature array is
+  sent to the service; disturbed PNGs and reports are stored under
+  `/data/analysis_output/audio_disturbance`.
 - Upgrade memory or optimize the colour renderer before enabling 4096–8192 px
   leaf-rubbing exports online.
 - Back up the Railway volume before changing codecs or the stored data layout.

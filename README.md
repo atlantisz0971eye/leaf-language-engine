@@ -190,3 +190,26 @@ Railway 会自动发布新版本。
 - `Layout integrity` 与尚未完成的 `Raster decode` 独立标注，避免把可布局误称为已证明可从像素解码
 
 算法说明见 `docs/language-system.md`，数据许可与署名见 `DATA_ATTRIBUTIONS.md`。
+
+## WAV 声音扰动（拓印载体）
+
+- 拓印文字载体通过容量检查后，页面会出现可选的第 4 步 `Sound`
+- WAV 在浏览器中提取能量、峰值、噪声、亮度与撞击点，原始音频不会上传到服务器
+- 量化后的声音数组只扰动叶片内部已经识别出的 Lab 颜色载体单元
+- `Original / Clean / Disturbed / Difference / Confidence` 五个视图用于比较像素变化
+- 最终导出为单张扰动 PNG，服务器会从这张 PNG 重新运行颜色解码和 CRC 验证
+- `Preserve / Trace loss / Breakdown` 控制声音驱动的语义偏差；默认只改变少量单词内部字符，保留空格、标点和句子结构
+- Transport CRC 验证 PNG 读取是否正确；Source CRC 单独标记恢复文字是否已经偏离原文
+- 声音扰动目前只适用于 Leaf rubbing；NMNS scan 继续使用独立的天然叶脉图编码管线
+
+## 诗句归档自动化
+
+在 macOS 上双击 `build_poetry_archive.command`，或运行：
+
+```bash
+python3 scripts/build_poetry_archive.py
+```
+
+程序会读取项目根目录的 `text_demo_copy*`，以可重现的随机顺序均衡分配拓印叶片与 WAV，
+然后在 `poetry_leaf_archive/`内建立时间戳归档。每条诗句包含六张透明 PNG、透明声波图、
+原句与 Hard decode 结果、JSON 记录；整批还会生成 UTF-8 CSV 索引和完整 JSON manifest。

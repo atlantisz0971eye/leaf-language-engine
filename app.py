@@ -29,6 +29,8 @@ from language_engine import analyze_word
 from language_database import LanguageDatabase
 from leaf_codec import decode_packet, encode_text
 from raster_decoder import decode_encoding_png
+from leaf_disturbance import run_leaf_experiment
+from semantic_disturbance import disturb_text
 from contour_color_codec import (
     decode_contour_colour,
     encode_contour_colour,
@@ -47,6 +49,7 @@ RUBBING_DIR = DATA_DIR / "Real_shoot_leaves_processed"
 UPLOADED_SPECIMEN_DIR = DATA_DIR / "uploaded_leaf_specimens"
 COLOUR_OUTPUT_DIR = OUTPUT_DIR / "colour_codec"
 DOCUMENT_OUTPUT_DIR = OUTPUT_DIR / "document_codec"
+AUDIO_OUTPUT_DIR = OUTPUT_DIR / "audio_disturbance"
 STATIC_DIR = APP_DIR / "static"
 LANGUAGE_LEXICON = APP_DIR / "language_data" / "root_lexicon.json"
 LANGUAGE_DATABASE = APP_DIR / "language_data" / "language.db"
@@ -81,6 +84,7 @@ def prepare_runtime_data() -> None:
         UPLOADED_SPECIMEN_DIR,
         COLOUR_OUTPUT_DIR,
         DOCUMENT_OUTPUT_DIR,
+        AUDIO_OUTPUT_DIR,
     ):
         directory.mkdir(parents=True, exist_ok=True)
 
@@ -562,6 +566,118 @@ def run_colour_job(identifier: str, sample: str, text: str, resolution: int) -> 
         gc.collect()
 
 
+def run_audio_disturbance_job(
+    identifier: str,
+    sample: str,
+    text: str,
+    resolution: int,
+    frames: list[dict],
+    levels: int,
+    config: dict,
+    audio_meta: dict,
+) -> None:
+    try:
+        update_background_job(identifier, status="running", progress=6, stage="Preparing carrier")
+
+        def report(value: int, stage: str) -> None:
+            update_background_job(
+                identifier,
+                progress=min(46, max(6, int(value * 0.46))),
+                stage=stage,
+            )
+
+        semantic = disturb_text(text, frames, config)
+        carrier_text = str(semantic["disturbed_text"])
+        capacity, selected, clean_carrier = prepare_colour_document(
+            sample,
+            carrier_text,
+            resolution,
+            progress=report,
+        )
+        requested_resolution = resolution
+        if not selected.get("exportable") or clean_carrier is None:
+            fallback = next(
+                (
+                    row
+                    for row in capacity.get("resolutions", [])
+                    if row.get("exportable")
+                    and int(row.get("resolution", 0)) > int(resolution)
+                ),
+                None,
+            )
+            if fallback is not None:
+                resolution = int(fallback["resolution"])
+                _, selected, clean_carrier = prepare_colour_document(
+                    sample,
+                    carrier_text,
+                    resolution,
+                    progress=report,
+                )
+        if not selected.get("exportable") or clean_carrier is None:
+            raise ValueError("This leaf and resolution cannot carry the complete text packet.")
+
+        source, _ = safe_colour_specimen(sample)
+        update_background_job(identifier, progress=52, stage="Mapping sound to leaf pixels")
+        output_dir = AUDIO_OUTPUT_DIR / identifier
+        result = run_leaf_experiment(
+            specimen_dir=source.parent,
+            text=carrier_text,
+            frames=frames,
+            levels=levels,
+            config=config,
+            output_dir=output_dir,
+            target_long_side=resolution,
+            clean_carrier_path=clean_carrier,
+        )
+        update_background_job(identifier, progress=92, stage="Reading disturbed PNG")
+        result["audio"] = {
+            "name": str(audio_meta.get("name", "Uploaded WAV")),
+            "duration": round(float(audio_meta.get("duration", 0.0)), 3),
+            "impacts": int(audio_meta.get("impacts", 0)),
+            "frames": len(frames),
+            "levels": levels,
+            "config": config,
+        }
+        decoded_transport = result.get("disturbed_decode") or {}
+        result["semantic"] = semantic
+        result["resolution"] = {
+            "requested": requested_resolution,
+            "used": resolution,
+            "upgraded": resolution != requested_resolution,
+        }
+        result["transport"] = {
+            "valid": bool(decoded_transport.get("valid")),
+            "decoded_text": str(decoded_transport.get("text", "")),
+            "source_altered": bool(semantic["source_altered"]),
+        }
+        result["output_urls"] = {
+            name: f"/audio-output/{identifier}/{filename}"
+            for name, filename in result["outputs"].items()
+        }
+        result["experiment_url"] = f"/audio-output/{identifier}/experiment.json"
+        (output_dir / "experiment.json").write_text(
+            json.dumps(result, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        update_background_job(
+            identifier,
+            status="complete",
+            progress=100,
+            stage="Decode complete",
+            result=result,
+        )
+    except Exception as exc:
+        update_background_job(
+            identifier,
+            status="error",
+            progress=100,
+            stage="Could not apply sound",
+            error=f"{type(exc).__name__}: {exc}",
+        )
+    finally:
+        gc.collect()
+
+
 def document_cache_path(sample: str, text: str, resolution: int) -> Path:
     digest = hashlib.sha256(
         f"nmns-v1\0{sample}\0{resolution}\0{text}".encode("utf-8")
@@ -1030,6 +1146,19 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 }
             )
             return
+        if path.startswith("/audio-output/"):
+            relative = unquote(path.removeprefix("/audio-output/")).lstrip("/")
+            candidate = (AUDIO_OUTPUT_DIR / relative).resolve()
+            try:
+                candidate.relative_to(AUDIO_OUTPUT_DIR.resolve())
+            except ValueError:
+                self.send_error(403)
+                return
+            if candidate.is_file():
+                self._file(candidate)
+            else:
+                self.send_error(404)
+            return
         if path.startswith("/colour-source/"):
             try:
                 source, _ = safe_colour_specimen(unquote(path.removeprefix("/colour-source/")))
@@ -1122,6 +1251,78 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 else:
                     raise ValueError("Choose either the leaf-rubbing or NMNS pipeline.")
                 launch_background_job(identifier, target, sample, text, resolution)
+                self._json({"job_id": identifier}, 202)
+                return
+
+            if self.path == "/api/jobs/audio-disturbance":
+                sample = str(body.get("sample", "")).strip()
+                text = str(body.get("text", "")).strip()
+                resolution = int(body.get("target_resolution", 4096))
+                raw_frames = body.get("audio_array")
+                if not sample:
+                    raise ValueError("Choose a leaf first.")
+                if not text:
+                    raise ValueError("Enter some text first.")
+                safe_colour_specimen(sample)
+                if not isinstance(raw_frames, list) or not raw_frames:
+                    raise ValueError("Choose and analyze a WAV file first.")
+                if len(raw_frames) > 6000:
+                    raise ValueError("The WAV array is too long. Use a shorter recording.")
+                levels = max(4, min(32, int(body.get("levels", 16))))
+                frame_keys = ("time", "energy", "peak", "bass", "brightness", "noise", "impact")
+                frames = []
+                for raw_frame in raw_frames:
+                    if not isinstance(raw_frame, dict):
+                        continue
+                    frame = {}
+                    for key in frame_keys:
+                        try:
+                            value = float(raw_frame.get(key, 0))
+                        except (TypeError, ValueError):
+                            value = 0.0
+                        frame[key] = max(0.0, min(float(levels - 1), value))
+                    frames.append(frame)
+                if not frames:
+                    raise ValueError("The WAV array does not contain usable feature frames.")
+                defaults = {
+                    "strength": 0.24,
+                    "shift": 0.40,
+                    "erasure": 0.12,
+                    "flip": 0.05,
+                    "clustering": 0.55,
+                }
+                raw_config = body.get("config") if isinstance(body.get("config"), dict) else {}
+                config = {}
+                for key, default in defaults.items():
+                    try:
+                        value = float(raw_config.get(key, default))
+                    except (TypeError, ValueError):
+                        value = default
+                    config[key] = max(0.0, min(1.0, value))
+                semantic_mode = str(raw_config.get("semantic_mode", "trace")).strip().lower()
+                config["semantic_mode"] = (
+                    semantic_mode
+                    if semantic_mode in {"preserve", "trace", "breakdown"}
+                    else "trace"
+                )
+                try:
+                    semantic_loss = float(raw_config.get("semantic_loss", 0.06))
+                except (TypeError, ValueError):
+                    semantic_loss = 0.06
+                config["semantic_loss"] = max(0.0, min(0.80, semantic_loss))
+                audio_meta = body.get("audio") if isinstance(body.get("audio"), dict) else {}
+                identifier = create_background_job("audio-disturbance")
+                launch_background_job(
+                    identifier,
+                    run_audio_disturbance_job,
+                    sample,
+                    text,
+                    resolution,
+                    frames,
+                    levels,
+                    config,
+                    audio_meta,
+                )
                 self._json({"job_id": identifier}, 202)
                 return
 
