@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Advanced Leaf Analysis</title>
+</head>
+<body>
+<main id="leaf-tool">
+  <section class="header">
+    <div>
+      <p class="eyebrow">EXPERIMENTAL LEAF TYPOGRAPHY</p>
+      <h1>Advanced Leaf Analysis</h1>
+      <p class="subtitle">Inspect vein graphs and experimental structure.</p>
+    </div>
+    <div class="header-actions">
+      <a class="language-link" href="/">← Leaf Carrier</a>
+      <div class="status" id="status">Ready</div>
+    </div>
+  </section>
+
+  <section class="workspace">
+    <aside class="controls">
+      <label>
+        <span>Leaf specimen</span>
+        <select id="image-select"></select>
+      </label>
+
+      <section class="upload-panel" aria-label="Add a specimen">
+        <label for="upload-input">
+          <span>Add specimen PNG</span>
+          <input id="upload-input" type="file" accept="image/png,.png">
+        </label>
+        <button id="upload" type="button">Upload and prepare</button>
+        <small id="upload-note">Transparent PNG is preferred. Flat white or black NMNS backgrounds are also detected.</small>
+      </section>
+
+      <label>
+        <span>Analysis resolution <output id="resolution-value">1600 px</output></span>
+        <input id="resolution" type="range" min="900" max="2200" step="100" value="1600">
+      </label>
+
+      <label>
+        <span>Vein threshold <output id="sensitivity-value">74%</output></span>
+        <input id="sensitivity" type="range" min="58" max="97" step="0.5" value="74">
+        <small>Lower values retain finer veins; higher values keep only stronger veins.</small>
+      </label>
+
+      <label>
+        <span>Local contrast scale <output id="contrast-value">12 px</output></span>
+        <input id="contrast" type="range" min="4" max="30" step="1" value="12">
+      </label>
+
+      <label>
+        <span>Minimum component <output id="component-value">6 px</output></span>
+        <input id="component" type="range" min="0" max="120" step="3" value="6">
+      </label>
+
+      <button id="analyze" class="primary">Analyze again</button>
+      <button id="export">Export current result</button>
+      <button id="export-all">Analyze all images</button>
+      <p class="folder-note" id="folder-note"></p>
+    </aside>
+
+    <section class="results">
+      <nav class="tabs" aria-label="Analysis views">
+        <button data-view="original">Original</button>
+        <button data-view="vessel_score">Vein response</button>
+        <button data-view="mask">Binary mask</button>
+        <button data-view="skeleton">Skeleton</button>
+        <button data-view="overlay" class="active">Node overlay</button>
+        <button data-view="heatmap">Complexity map</button>
+      </nav>
+
+      <div class="image-stage">
+        <img id="preview" alt="Analysis result for the selected leaf">
+        <div class="loading" id="loading" hidden>Analyzing leaf veins…</div>
+      </div>
+
+      <div class="metrics" id="metrics" aria-live="polite"></div>
+    </section>
+  </section>
+</main>
+
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f4f2ec;
+    --surface: rgba(255, 255, 255, 0.76);
+    --surface-solid: #fffdfa;
+    --text: #1f2b24;
+    --muted: #667168;
+    --line: rgba(45, 65, 52, 0.16);
+    --accent: #8e2036;
+    --accent-soft: rgba(142, 32, 54, 0.10);
+    --leaf: #2f6d4c;
+    --shadow: 0 18px 60px rgba(37, 49, 41, 0.10);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-width: 320px;
+    color: var(--text);
+    background:
+      radial-gradient(circle at 14% 8%, rgba(157, 177, 153, 0.28), transparent 32rem),
+      radial-gradient(circle at 88% 12%, rgba(181, 119, 131, 0.18), transparent 28rem),
+      var(--bg);
+    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  button, select, input { font: inherit; }
+  button:focus-visible, select:focus-visible, input:focus-visible {
+    outline: 3px solid rgba(142, 32, 54, 0.25);
+    outline-offset: 2px;
+  }
+
+  #leaf-tool { width: min(1480px, calc(100% - 40px)); margin: 0 auto; padding: 34px 0 48px; }
+  .header { display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; margin-bottom: 24px; }
+  .eyebrow { margin: 0 0 7px; color: var(--accent); font-size: 11px; letter-spacing: .2em; font-weight: 700; }
+  h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(30px, 4vw, 52px); font-weight: 500; }
+  .subtitle { margin: 8px 0 0; color: var(--muted); }
+  .status { padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 13px; background: var(--surface); }
+  .header-actions { display: flex; align-items: center; gap: 10px; }
+  .language-link { color: var(--accent); font-size: 13px; text-decoration: none; }
+  .language-link:hover { text-decoration: underline; }
+
+  .workspace { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 18px; }
+  .controls, .results {
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(18px);
+  }
+  .controls { padding: 22px; align-self: start; position: sticky; top: 18px; }
+  .controls label { display: grid; gap: 8px; margin-bottom: 19px; color: var(--text); font-size: 13px; font-weight: 600; }
+  .controls label span { display: flex; justify-content: space-between; gap: 12px; }
+  .controls output, .controls small { color: var(--muted); font-weight: 400; }
+  .controls small { line-height: 1.45; }
+  select {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+    color: var(--text); background: var(--surface-solid);
+  }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  input[type="file"] {
+    width: 100%; padding: 8px; border: 1px dashed var(--line); border-radius: 10px;
+    color: var(--muted); background: rgba(56,82,64,.035); font-size: 11px;
+  }
+  .upload-panel {
+    margin: -3px 0 18px; padding: 12px; border: 1px solid var(--line);
+    border-radius: 12px; background: rgba(56,82,64,.035);
+  }
+  .upload-panel label { margin-bottom: 4px; }
+  .upload-panel button { margin-top: 5px; }
+  .upload-panel small { display: block; margin-top: 9px; line-height: 1.4; }
+  .controls button {
+    width: 100%; margin-top: 8px; padding: 11px 12px; border: 1px solid var(--line);
+    border-radius: 10px; color: var(--text); background: transparent; cursor: pointer;
+  }
+  .controls button:hover { background: rgba(56, 82, 64, .06); }
+  .controls button.primary { color: white; border-color: var(--accent); background: var(--accent); }
+  .controls button:disabled { opacity: .45; cursor: wait; }
+  .folder-note { margin: 16px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+
+  .results { min-width: 0; padding: 16px; }
+  .tabs { display: flex; gap: 7px; overflow-x: auto; padding: 2px 2px 14px; }
+  .tabs button {
+    flex: 0 0 auto; padding: 8px 11px; border: 0; border-radius: 999px;
+    color: var(--muted); background: transparent; cursor: pointer;
+  }
+  .tabs button.active { color: white; background: var(--leaf); }
+  .image-stage {
+    position: relative; display: grid; place-items: center; min-height: 560px;
+    border-radius: 14px; overflow: hidden;
+    background-image:
+      linear-gradient(45deg, rgba(80, 99, 86, .055) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(80, 99, 86, .055) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(80, 99, 86, .055) 75%),
+      linear-gradient(-45deg, transparent 75%, rgba(80, 99, 86, .055) 75%);
+    background-size: 24px 24px;
+    background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+  }
+  #preview { display: block; width: 100%; height: min(68vh, 820px); object-fit: contain; }
+  .loading {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    color: var(--text); background: rgba(244, 242, 236, .78); backdrop-filter: blur(8px);
+  }
+  .loading[hidden] { display: none; }
+  .metrics { display: grid; grid-template-columns: repeat(6, minmax(110px, 1fr)); gap: 10px; margin-top: 14px; }
+  .metric { min-width: 0; padding: 12px; border-top: 2px solid var(--line); }
+  .metric strong { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .metric span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+  .metric:first-child { border-color: var(--accent); color: var(--accent); }
+
+  @media (max-width: 900px) {
+    #leaf-tool { width: min(100% - 24px, 760px); padding-top: 20px; }
+    .workspace { grid-template-columns: 1fr; }
+    .controls { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; }
+    .controls button, .folder-note { grid-column: 1 / -1; }
+    .image-stage { min-height: 380px; }
+    #preview { height: 58vh; }
+    .metrics { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  @media (max-width: 540px) {
+    .header { align-items: flex-start; flex-direction: column; }
+    .controls { display: block; }
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .image-stage { min-height: 320px; }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171b18;
+      --surface: rgba(34, 40, 35, .82);
+      --surface-solid: #252b26;
+      --text: #eef2ed;
+      --muted: #aeb8b0;
+      --line: rgba(222, 235, 225, .14);
+      --accent: #d56b7f;
+      --accent-soft: rgba(213, 107, 127, .12);
+      --leaf: #4f9168;
+      --shadow: 0 18px 60px rgba(0, 0, 0, .24);
+    }
+    .loading { background: rgba(23, 27, 24, .78); }
+  }
+</style>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

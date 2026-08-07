@@ -1,0 +1,61 @@
+{
+  "source": "1551.JPG",
+  "source_size": [
+    2160,
+    2880
+  ],
+  "crop_box": [
+    1034,
+    1403,
+    1973,
+    2266
+  ],
+  "selected_candidate_box": [
+    1094,
+    1464,
+    817,
+    741
+  ],
+  "selection_method": "curated-lower",
+  "candidate_count": 2,
+  "candidate_features": [
+    {
+      "label": 1,
+      "x": 93,
+      "y": 350,
+      "width": 308,
+      "height": 286,
+      "area": 67599,
+      "center_x": 243.7366233228302,
+      "center_y": 491.790351928283,
+      "foreground_density": 0.7047384433748071,
+      "mean_saturation": 229.7496415857214,
+      "border_touch": false
+    },
+    {
+      "label": 2,
+      "x": 418,
+      "y": 559,
+      "width": 312,
+      "height": 283,
+      "area": 66737,
+      "center_x": 577.7273326640394,
+      "center_y": 703.4823860826828,
+      "foreground_density": 0.6915488810365136,
+      "mean_saturation": 209.4471430209135,
+      "border_touch": false
+    }
+  ],
+  "ink_coverage": 0.9003,
+  "preliminary_vein_density": 0.3227,
+  "quality_score": 38.7,
+  "review_recommended": true,
+  "outputs": {
+    "rgba": "rubbing_rgba.png",
+    "clean": "rubbing_clean.png",
+    "silhouette": "silhouette.png",
+    "ink_mask": "ink_mask.png",
+    "vein_candidate": "vein_candidate.png"
+  },
+  "notes": "vein_candidate.png is a preliminary visual layer; textile-frequency suppression and graph validation belong to the next algorithm stage."
+}

@@ -1,0 +1,102 @@
+{
+  "art": {
+    "score": 62,
+    "gloss": "human making and aesthetic expression"
+  },
+  "bio": {
+    "score": 55,
+    "gloss": "life"
+  },
+  "break": {
+    "score": 44,
+    "gloss": "separation or rupture"
+  },
+  "chron": {
+    "score": 75,
+    "gloss": "time"
+  },
+  "complex": {
+    "score": 72,
+    "gloss": "interwoven or composed of many parts"
+  },
+  "connect": {
+    "score": 58,
+    "gloss": "joining or relational linkage"
+  },
+  "creat": {
+    "score": 60,
+    "gloss": "bringing something into being"
+  },
+  "form": {
+    "score": 48,
+    "gloss": "shape or structure"
+  },
+  "fract": {
+    "score": 55,
+    "gloss": "breaking into parts"
+  },
+  "grow": {
+    "score": 38,
+    "gloss": "organic increase or development"
+  },
+  "growth": {
+    "score": 40,
+    "gloss": "organic increase, development, or expansion"
+  },
+  "language": {
+    "score": 70,
+    "gloss": "symbolic communication system"
+  },
+  "leaf": {
+    "score": 26,
+    "gloss": "concrete plant organ"
+  },
+  "life": {
+    "score": 58,
+    "gloss": "living existence"
+  },
+  "light": {
+    "score": 48,
+    "gloss": "illumination or conceptual clarity"
+  },
+  "lingu": {
+    "score": 68,
+    "gloss": "language or tongue"
+  },
+  "memor": {
+    "score": 73,
+    "gloss": "memory and mental retention"
+  },
+  "memory": {
+    "score": 73,
+    "gloss": "mental retention, recall, and reconstruction"
+  },
+  "mort": {
+    "score": 70,
+    "gloss": "death or mortality"
+  },
+  "natur": {
+    "score": 47,
+    "gloss": "nature or inherent character"
+  },
+  "nect": {
+    "score": 58,
+    "gloss": "binding or joining"
+  },
+  "silence": {
+    "score": 64,
+    "gloss": "absence of sound or speech"
+  },
+  "simple": {
+    "score": 28,
+    "gloss": "single or minimally composed"
+  },
+  "time": {
+    "score": 74,
+    "gloss": "temporal duration and order"
+  },
+  "vein": {
+    "score": 31,
+    "gloss": "vascular channel"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "experimental_complexity": 44.86,
+  "leaf_area_px": 267814,
+  "skeleton_pixels": 12584,
+  "vein_length_px": 15559.59,
+  "normalized_vein_length": 30.066,
+  "junction_count": 297,
+  "junction_density_per_100k": 110.898,
+  "endpoint_count": 1505,
+  "endpoint_density_per_100k": 561.957,
+  "mesh_count": 11,
+  "mesh_density_per_100k": 4.107,
+  "mean_mesh_area_px": 28.864,
+  "median_mesh_area_px": 12.0,
+  "orientation_entropy": 0.9586,
+  "file_name": "Fagus_longipetiolata_t0020.png",
+  "original_width": 2782,
+  "original_height": 3986,
+  "analysis_width": 1117,
+  "analysis_height": 1600,
+  "resize_ratio": 0.401405
+}

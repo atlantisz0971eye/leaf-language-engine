@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leaf Carrier</title>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <p class="eyebrow" id="mode-eyebrow">LEAF TYPOGRAPHY</p>
+      <h1>Leaf Carrier</h1>
+      <p id="mode-description">Upload a leaf. Check capacity. Export.</p>
+    </div>
+    <a href="/analysis">Advanced analysis</a>
+  </header>
+
+  <nav class="journey" aria-label="Workflow">
+    <span class="active" data-step="1"><b>1</b> Leaf</span>
+    <i></i>
+    <span data-step="2"><b>2</b> Text</span>
+    <i></i>
+    <span data-step="3"><b>3</b> Export</span>
+  </nav>
+
+  <section class="panel source-panel">
+    <div class="panel-head">
+      <div><span class="step">01</span><h2>Choose a leaf</h2></div>
+      <small id="library-count">Loading library…</small>
+    </div>
+
+    <div class="source-types" role="group" aria-label="Leaf source type">
+      <button type="button" class="selected" data-source="rubbing">
+        <b>Leaf rubbing</b><span>Photo or print · JPG / PNG</span>
+      </button>
+      <button type="button" data-source="nmns">
+        <b>NMNS scan</b><span>Cleared leaf · JPG / PNG</span>
+      </button>
+    </div>
+
+    <div class="upload-row">
+      <label class="file-drop" for="leaf-file">
+        <input id="leaf-file" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png">
+        <strong id="file-label">Choose an image</strong>
+        <span>JPG or PNG · up to 32 MB</span>
+      </label>
+      <button class="primary" id="analyze-leaf" type="button">Analyze leaf</button>
+    </div>
+
+    <div class="or"><span>or use a saved leaf</span></div>
+    <label class="saved-select">Saved leaf
+      <select id="leaf-select"></select>
+    </label>
+
+    <div class="progress" id="leaf-progress" hidden>
+      <div><strong id="leaf-progress-label">Reading image</strong><span id="leaf-progress-value">0%</span></div>
+      <progress id="leaf-progress-bar" max="100" value="0"></progress>
+    </div>
+
+    <article class="leaf-result" id="leaf-result" hidden>
+      <a class="leaf-preview-frame" id="leaf-preview-link" target="_blank" rel="noopener" aria-label="Open the full leaf image">
+        <img id="leaf-preview" alt="Selected leaf">
+        <span>Open full image ↗</span>
+      </a>
+      <div class="leaf-summary">
+        <span class="ready-badge" id="leaf-ready">READY</span>
+        <h3 id="leaf-name">Leaf</h3>
+        <p id="leaf-kind">Detected leaf</p>
+        <dl>
+          <div><dt id="leaf-quality">—</dt><dd id="leaf-quality-label">Quality</dd></div>
+          <div><dt id="leaf-texture">—</dt><dd id="leaf-texture-label">Texture</dd></div>
+          <div><dt id="leaf-size">—</dt><dd>Image</dd></div>
+        </dl>
+      </div>
+    </article>
+  </section>
+
+  <section class="panel text-panel locked" id="text-panel">
+    <div class="panel-head">
+      <div><span class="step">02</span><h2>Add your text</h2></div>
+      <small id="text-count">0 bytes</small>
+    </div>
+    <textarea id="text-input" rows="5" maxlength="1600" placeholder="Type or paste English text…"></textarea>
+    <div class="text-actions">
+      <label>Output size
+        <select id="resolution-select">
+          <option value="2048">2048 px</option>
+          <option value="3072">3072 px</option>
+          <option value="4096" selected>4096 px</option>
+          <option value="6144">6144 px</option>
+          <option value="8192">8192 px</option>
+        </select>
+      </label>
+      <button class="primary" id="check-capacity" type="button">Check capacity</button>
+    </div>
+
+    <div class="progress" id="capacity-progress" hidden>
+      <div><strong id="capacity-progress-label">Preparing text</strong><span id="capacity-progress-value">0%</span></div>
+      <progress id="capacity-progress-bar" max="100" value="0"></progress>
+    </div>
+
+    <article class="decision" id="capacity-result" hidden>
+      <div class="decision-head">
+        <span id="capacity-badge">READY</span>
+        <div><h3 id="capacity-title">Ready to export</h3><p id="capacity-note"></p></div>
+      </div>
+      <div class="decision-metrics">
+        <div><strong id="text-bytes">—</strong><span>Text</span></div>
+        <div><strong id="safe-bytes">—</strong><span>Safe capacity</span></div>
+        <div><strong id="vote-count">—</strong><span id="vote-count-label">Redundancy</span></div>
+      </div>
+      <div class="resolution-grid" id="resolution-grid"></div>
+    </article>
+  </section>
+
+  <section class="panel export-panel locked" id="export-panel" hidden>
+    <div class="panel-head">
+      <div><span class="step">03</span><h2>Export</h2></div>
+      <small id="export-kind">Reversible JPG</small>
+    </div>
+    <div class="export-preview"><img id="encoded-preview" alt="Encoded leaf preview"></div>
+    <div class="export-actions">
+      <button class="primary" id="export-jpg" type="button" disabled>Export JPG</button>
+      <span id="export-status">Run the capacity check first.</span>
+    </div>
+  </section>
+
+  <details class="verify">
+    <summary>Verify an exported image</summary>
+    <div class="verify-row">
+      <input id="decoder-file" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png">
+      <button id="decode-image" type="button">Decode</button>
+    </div>
+    <p id="decoder-status"></p>
+    <textarea id="decoded-text" rows="4" readonly hidden></textarea>
+  </details>
+</main>
+
+<style>
+  :root {
+    color-scheme:light; --bg:#f2f0e9; --card:#fffefa; --text:#203027; --muted:#6c786f;
+    --line:rgba(40,66,50,.15); --green:#316f50; --green-soft:#e7f0e9; --red:#9d2941;
+    --gold:#b88a27; --surface:#fff; --surface-soft:#f8f8f4; --track:#d3dfd5;
+    --shadow:0 22px 70px rgba(38,55,44,.09);
+  }
+  *{box-sizing:border-box} [hidden]{display:none!important}
+  body{margin:0;min-width:320px;color:var(--text);font-family:"Avenir Next","Helvetica Neue",Arial,sans-serif;background:
+    radial-gradient(circle at 5% 5%,rgba(130,160,130,.18),transparent 30rem),
+    radial-gradient(circle at 95% 2%,rgba(170,112,124,.12),transparent 27rem),var(--bg);transition:color .35s ease,background-color .35s ease}
+  body.nmns-mode{color-scheme:dark;--bg:#080f13;--card:#10191f;--text:#e8f0ed;--muted:#8f9e9b;
+    --line:rgba(151,190,177,.18);--green:#6eb495;--green-soft:#172a24;--red:#c8a45e;
+    --gold:#c8a45e;--surface:#0d151a;--surface-soft:#0a1216;--track:#24342f;
+    --shadow:0 26px 80px rgba(0,0,0,.32);background:
+    radial-gradient(circle at 9% 0,rgba(59,111,93,.24),transparent 34rem),
+    radial-gradient(circle at 95% 8%,rgba(200,164,94,.10),transparent 28rem),
+    linear-gradient(155deg,#0b1318 0%,#080f13 55%,#060b0e 100%)}
+  button,input,select,textarea{font:inherit} button{cursor:pointer}
+  main{width:min(980px,calc(100% - 32px));margin:auto;padding:34px 0 70px}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:22px;margin-bottom:25px}
+  .eyebrow{margin:0 0 6px;color:var(--red);font-size:10px;letter-spacing:.19em;font-weight:800}
+  h1,h2,h3{font-family:Georgia,"Times New Roman",serif;font-weight:500}
+  h1{margin:0;font-size:clamp(38px,7vw,64px)} header p:last-child{margin:6px 0 0;color:var(--muted)}
+  header a{color:var(--muted);font-size:12px;text-decoration:none} header a:hover{color:var(--red)}
+  .journey{display:grid;grid-template-columns:auto 1fr auto 1fr auto;align-items:center;width:min(560px,100%);margin:0 auto 24px;color:#9ba49d}
+  .journey span{display:flex;align-items:center;gap:7px;font-size:12px}.journey b{display:grid;place-items:center;width:26px;height:26px;border:1px solid var(--line);border-radius:50%;font-size:11px}
+  .journey i{height:1px;margin:0 12px;background:var(--line)}.journey span.active{color:var(--green)}.journey span.active b{color:#fff;border-color:var(--green);background:var(--green)}
+  .panel,.verify{margin-top:14px;padding:22px;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--card) 92%,transparent);box-shadow:var(--shadow);backdrop-filter:blur(18px);transition:background-color .35s ease,border-color .35s ease,box-shadow .35s ease}
+  .panel.locked{opacity:.54}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:17px}.panel-head>div{display:flex;align-items:center;gap:10px}.panel-head h2{margin:0;font-size:24px}.panel-head small{color:var(--muted);font-size:10px}.step{color:var(--red);font-size:10px;letter-spacing:.1em;font-weight:800}
+  .source-types{display:grid;grid-template-columns:1fr 1fr;gap:10px}.source-types button{padding:15px 16px;text-align:left;border:1px solid var(--line);border-radius:12px;color:var(--text);background:transparent}.source-types button.selected{border-color:var(--green);background:var(--green-soft)}.source-types b,.source-types span{display:block}.source-types b{font-size:14px}.source-types span{margin-top:3px;color:var(--muted);font-size:10px}
+  .upload-row{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:11px}.file-drop{position:relative;min-height:64px;padding:13px 15px;border:1px dashed var(--line);border-radius:12px;background:rgba(49,111,80,.025)}.file-drop input{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}.file-drop strong,.file-drop span{display:block}.file-drop strong{font-size:13px}.file-drop span{margin-top:3px;color:var(--muted);font-size:9px}
+  .primary{padding:0 22px;border:0;border-radius:11px;color:white;background:var(--red)}.primary:disabled{opacity:.38;cursor:not-allowed}.or{display:flex;align-items:center;gap:10px;margin:15px 0 9px;color:#929c94;font-size:9px}.or:before,.or:after{content:"";height:1px;flex:1;background:var(--line)}
+  .saved-select{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px;color:var(--muted);font-size:10px}select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;color:var(--text);background:var(--surface)}
+  .progress{margin-top:13px;padding:12px 14px;border-radius:11px;background:var(--green-soft)}.progress>div{display:flex;justify-content:space-between;margin-bottom:8px;font-size:10px}.progress span{color:var(--muted)}progress{display:block;width:100%;height:7px;border:0;border-radius:99px;overflow:hidden;background:var(--track)}progress::-webkit-progress-bar{background:var(--track)}progress::-webkit-progress-value{background:var(--green);transition:width .3s ease}progress::-moz-progress-bar{background:var(--green)}
+  .leaf-result{display:grid;grid-template-columns:minmax(300px,360px) 1fr;gap:24px;margin-top:14px;padding:17px;border:1px solid var(--line);border-radius:15px;background:var(--surface)}.leaf-preview-frame{position:relative;display:block;min-width:0;color:inherit;text-decoration:none}.leaf-preview-frame img{display:block;width:100%;height:240px;padding:10px;object-fit:contain;border-radius:10px;background:var(--surface-soft)}.leaf-preview-frame span{position:absolute;right:9px;bottom:9px;padding:5px 8px;border:1px solid var(--line);border-radius:99px;color:var(--muted);background:color-mix(in srgb,var(--surface) 88%,transparent);font-size:8px;opacity:0;transform:translateY(3px);transition:.2s ease}.leaf-preview-frame:hover span,.leaf-preview-frame:focus-visible span{opacity:1;transform:none}.leaf-summary{align-self:center}.ready-badge,#capacity-badge{display:inline-block;padding:4px 7px;border-radius:99px;color:var(--green);background:var(--green-soft);font-size:8px;font-weight:800;letter-spacing:.08em}.ready-badge.review,#capacity-badge.fail{color:var(--red);background:color-mix(in srgb,var(--red) 15%,transparent)}.leaf-summary h3{margin:7px 0 2px;font-size:24px}.leaf-summary p{margin:0;color:var(--muted);font-size:10px;text-transform:capitalize}.leaf-summary dl{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0 0}.leaf-summary dl div{padding-top:9px;border-top:1px solid var(--line)}dt{font-family:Georgia,"Times New Roman",serif;font-size:18px}dd{margin:2px 0 0;color:var(--muted);font-size:8px}
+  body.nmns-mode .leaf-result{grid-template-columns:minmax(390px,460px) 1fr;padding:20px;background:color-mix(in srgb,var(--surface) 96%,#162720 4%)}body.nmns-mode .leaf-preview-frame img{height:330px;padding:16px;background:#f1f1eb}body.nmns-mode .leaf-summary h3{font-size:27px}body.nmns-mode .leaf-preview-frame span{color:#d8e3df;background:rgba(9,18,22,.88)}
+  textarea{width:100%;padding:14px;border:1px solid var(--line);border-radius:11px;color:var(--text);background:var(--surface);resize:vertical;line-height:1.5}.text-actions{display:grid;grid-template-columns:150px auto;justify-content:end;gap:10px;margin-top:10px}.text-actions label{color:var(--muted);font-size:9px}.text-actions select{margin-top:4px}.text-actions button{min-height:43px;align-self:end}
+  .decision{margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:13px;background:var(--surface)}.decision-head{display:flex;align-items:flex-start;gap:12px}.decision-head h3{margin:0;font-size:22px}.decision-head p{margin:4px 0 0;color:var(--muted);font-size:10px}.decision-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px}.decision-metrics div{padding:10px 0;border-top:1px solid var(--line)}.decision-metrics strong,.decision-metrics span{display:block}.decision-metrics strong{font-family:Georgia,"Times New Roman",serif;font-size:21px}.decision-metrics span{margin-top:3px;color:var(--muted);font-size:8px}.resolution-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}.resolution-grid button{padding:8px 5px;border:1px solid var(--line);border-radius:8px;color:var(--muted);background:transparent;font-size:9px}.resolution-grid button.ready{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,transparent);background:var(--green-soft)}.resolution-grid button.selected{box-shadow:inset 0 0 0 1px var(--green)}
+  .export-preview{display:grid;place-items:center;min-height:330px;border-radius:12px;overflow:hidden;background:var(--surface)}.export-preview img{display:block;width:100%;max-height:620px;object-fit:contain}.export-actions{display:flex;align-items:center;gap:13px;margin-top:12px}.export-actions button{min-height:44px}.export-actions span{color:var(--muted);font-size:10px}
+  .verify{box-shadow:none}.verify summary{cursor:pointer;font-family:Georgia,"Times New Roman",serif;font-size:18px}.verify-row{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:14px}.verify-row input{padding:10px;border:1px dashed var(--line);border-radius:9px}.verify-row button{padding:0 18px;border:1px solid var(--line);border-radius:9px;color:var(--text);background:transparent}.verify p{color:var(--muted);font-size:10px}.verify textarea{margin-top:8px}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(49,111,80,.2);outline-offset:2px}
+  @media(max-width:760px){main{width:min(100% - 20px,560px);padding-top:20px}header{align-items:flex-start;flex-direction:column}.source-types,.upload-row,.leaf-result,body.nmns-mode .leaf-result{grid-template-columns:1fr}.upload-row .primary{min-height:46px}.saved-select{grid-template-columns:1fr}.leaf-preview-frame img,body.nmns-mode .leaf-preview-frame img{height:280px}.text-actions{grid-template-columns:1fr}.text-actions button{min-height:46px}.resolution-grid{grid-template-columns:repeat(3,1fr)}.export-preview{min-height:230px}.decision-metrics{gap:6px}.journey span{font-size:10px}}
+</style>
+<script src="/static/language.js"></script>
+</body>
+</html>

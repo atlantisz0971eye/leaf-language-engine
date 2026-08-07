@@ -1,0 +1,9 @@
+.DS_Store
+.git
+.gitignore
+__pycache__
+*.py[cod]
+*.log
+.env
+.venv
+venv

@@ -1,0 +1,22 @@
+{
+  "experimental_complexity": 59.39,
+  "leaf_area_px": 324665,
+  "skeleton_pixels": 19149,
+  "vein_length_px": 28098.31,
+  "normalized_vein_length": 49.313,
+  "junction_count": 785,
+  "junction_density_per_100k": 241.788,
+  "endpoint_count": 1796,
+  "endpoint_density_per_100k": 553.186,
+  "mesh_count": 68,
+  "mesh_density_per_100k": 20.945,
+  "mean_mesh_area_px": 2612.853,
+  "median_mesh_area_px": 57.0,
+  "orientation_entropy": 0.9919,
+  "file_name": "Acanthopanax_sciadophylloides_t0013-1.png",
+  "original_width": 2758,
+  "original_height": 3966,
+  "analysis_width": 1113,
+  "analysis_height": 1600,
+  "resize_ratio": 0.403429
+}

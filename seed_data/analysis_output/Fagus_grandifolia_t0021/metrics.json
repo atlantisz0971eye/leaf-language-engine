@@ -1,0 +1,22 @@
+{
+  "experimental_complexity": 48.22,
+  "leaf_area_px": 374372,
+  "skeleton_pixels": 17263,
+  "vein_length_px": 24087.75,
+  "normalized_vein_length": 39.368,
+  "junction_count": 538,
+  "junction_density_per_100k": 143.707,
+  "endpoint_count": 1928,
+  "endpoint_density_per_100k": 514.996,
+  "mesh_count": 3,
+  "mesh_density_per_100k": 0.801,
+  "mean_mesh_area_px": 9.333,
+  "median_mesh_area_px": 8.0,
+  "orientation_entropy": 0.9958,
+  "file_name": "Fagus_grandifolia_t0021.png",
+  "original_width": 2782,
+  "original_height": 3986,
+  "analysis_width": 1117,
+  "analysis_height": 1600,
+  "resize_ratio": 0.401405
+}

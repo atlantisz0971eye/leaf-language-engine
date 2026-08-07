@@ -1,0 +1,22 @@
+{
+  "experimental_complexity": 60.12,
+  "leaf_area_px": 476139,
+  "skeleton_pixels": 30231,
+  "vein_length_px": 44071.55,
+  "normalized_vein_length": 63.869,
+  "junction_count": 905,
+  "junction_density_per_100k": 190.071,
+  "endpoint_count": 1635,
+  "endpoint_density_per_100k": 343.387,
+  "mesh_count": 154,
+  "mesh_density_per_100k": 32.343,
+  "mean_mesh_area_px": 2628.61,
+  "median_mesh_area_px": 1912.0,
+  "orientation_entropy": 0.9787,
+  "file_name": "Lindera_obtusiloba_t0010.png",
+  "original_width": 2795,
+  "original_height": 4039,
+  "analysis_width": 1107,
+  "analysis_height": 1600,
+  "resize_ratio": 0.396138
+}
