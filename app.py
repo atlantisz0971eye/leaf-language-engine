@@ -1072,6 +1072,8 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 {
                     "status": "ok",
                     "service": "leaf-language-engine",
+                    "revision": os.environ.get("RAILWAY_GIT_COMMIT_SHA", "local")[:12],
+                    "features": ["rubbing", "nmns", "audio-hard-decode", "png-readback"],
                     "images": len(image_files()),
                     "data_persistent": DATA_DIR != LOCAL_PROJECT_DIR,
                 }
