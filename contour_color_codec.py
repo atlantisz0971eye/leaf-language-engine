@@ -268,11 +268,17 @@ def _cell_geometry(
     spacing: int,
     seed: int,
 ) -> list[dict[str, Any]]:
-    distance = cv2.distanceTransform(mask, cv2.DIST_L2, 5)
-    ys, xs = np.where(mask > 0)
-    if not len(xs):
+    bounds = cv2.boundingRect(mask)
+    x0, y0, width, height = (int(value) for value in bounds)
+    if width <= 0 or height <= 0:
         return []
-    x0, x1, y0, y1 = int(xs.min()), int(xs.max()), int(ys.min()), int(ys.max())
+    x1, y1 = x0 + width - 1, y0 + height - 1
+    # Distance only needs to exist inside the leaf bounding box. Cropping it
+    # prevents a mostly-white 8K canvas from allocating another full-size
+    # float32 image.
+    cropped_mask = mask[y0 : y1 + 1, x0 : x1 + 1]
+    padded_mask = cv2.copyMakeBorder(cropped_mask, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
+    distance = cv2.distanceTransform(padded_mask, cv2.DIST_L2, 5)[1:-1, 1:-1]
     luminance = lab[..., 0]
     texture = luminance < 236
     radius = spacing * 0.43
@@ -288,7 +294,7 @@ def _cell_geometry(
             jx = ((value & 255) / 255.0 - 0.5) * spacing * 0.26
             jy = (((value >> 8) & 255) / 255.0 - 0.5) * spacing * 0.26
             cx, cy = int(round(x + jx)), int(round(y + jy))
-            if not (0 <= cx < mask.shape[1] and 0 <= cy < mask.shape[0]) or distance[cy, cx] < margin:
+            if not (0 <= cx < mask.shape[1] and 0 <= cy < mask.shape[0]) or distance[cy - y0, cx - x0] < margin:
                 column += 1
                 continue
             angle = (((value >> 16) & 0xFFFF) / 65535.0) * math.pi
@@ -310,10 +316,11 @@ def _cell_geometry(
                         "order": order,
                         "grid_order": row * 100000 + column,
                         "roi": (yy0, yy1, xx0, xx1),
-                        "left": left,
-                        "right": right,
+                        "center": (cx, cy),
+                        "direction": (float(direction[0]), float(direction[1])),
                         "radius": radius,
-                        "distance_squared": dx * dx + dy * dy,
+                        "active_shape": active.shape,
+                        "active_bits": np.packbits(active.reshape(-1)),
                     }
                 )
             column += 1
@@ -322,22 +329,40 @@ def _cell_geometry(
     return candidates
 
 
+def _cell_masks(cell: dict[str, Any]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Rebuild one small cell mask on demand instead of retaining thousands."""
+    y0, y1, x0, x1 = cell["roi"]
+    cx, cy = cell["center"]
+    direction_x, direction_y = cell["direction"]
+    gy, gx = np.mgrid[y0:y1, x0:x1]
+    dx, dy = gx - cx, gy - cy
+    distance_squared = dx * dx + dy * dy
+    active = np.unpackbits(
+        cell["active_bits"], count=int(np.prod(cell["active_shape"]))
+    ).reshape(cell["active_shape"]).astype(bool)
+    projection = dx * direction_x + dy * direction_y
+    threshold = math.sqrt(float(cell["radius"]) ** 2) * (0.055 / 0.43)
+    return active & (projection < -threshold), active & (projection > threshold), distance_squared
+
+
 def _apply_colour_bit(lab: np.ndarray, cell: dict[str, Any], bit: int, delta: float) -> None:
     y0, y1, x0, x1 = cell["roi"]
     region = lab[y0:y1, x0:x1]
-    radial = np.clip(1.0 - np.sqrt(cell["distance_squared"]) / max(1.0, cell["radius"]), 0.0, 1.0)
+    left, right, distance_squared = _cell_masks(cell)
+    radial = np.clip(1.0 - np.sqrt(distance_squared) / max(1.0, cell["radius"]), 0.0, 1.0)
     weight = 0.58 + 0.42 * radial
     first_sign, second_sign = (-1.0, 1.0) if bit == 0 else (1.0, -1.0)
     a = region[..., 1]
-    a[cell["left"]] = np.clip(a[cell["left"]] + first_sign * delta * weight[cell["left"]], 0, 255)
-    a[cell["right"]] = np.clip(a[cell["right"]] + second_sign * delta * weight[cell["right"]], 0, 255)
+    a[left] = np.clip(a[left] + first_sign * delta * weight[left], 0, 255)
+    a[right] = np.clip(a[right] + second_sign * delta * weight[right], 0, 255)
 
 
 def _read_colour_bit(lab: np.ndarray, cell: dict[str, Any]) -> tuple[int, float]:
     y0, y1, x0, x1 = cell["roi"]
     a = lab[y0:y1, x0:x1, 1]
-    left = float(np.median(a[cell["left"]]))
-    right = float(np.median(a[cell["right"]]))
+    left_mask, right_mask, _ = _cell_masks(cell)
+    left = float(np.median(a[left_mask]))
+    right = float(np.median(a[right_mask]))
     difference = right - left
     return int(difference < 0), min(1.0, abs(difference) / 36.0)
 
@@ -433,7 +458,7 @@ def estimate_contour_colour_capacity(
         raise OSError("Could not prepare the capacity calibration surface.")
     visible = cv2.imdecode(buffer, cv2.IMREAD_COLOR)
     visible_mask = _jpeg_leaf_mask(visible)
-    visible_lab = cv2.cvtColor(visible, cv2.COLOR_BGR2LAB).astype(np.float32)
+    visible_lab = cv2.cvtColor(visible, cv2.COLOR_BGR2LAB)
     calibration_cells = len(
         _cell_geometry(visible_mask, visible_lab, int(cell_spacing), seed)
     )
@@ -548,15 +573,14 @@ def encode_contour_colour(
 
     # A provisional boundary provides the exact visible coordinate system used
     # to choose the best two-bit address salt. The final header then records it.
-    clean_canvas = canvas.copy()
     provisional_header = _pack_header(
         bool(packet["compressed"]), int(packet["body_length"]), spacing, 0
     )
-    provisional = clean_canvas.copy()
+    provisional = canvas.copy()
     _draw_protocol(provisional, mask, _bytes_to_bits(provisional_header))
     provisional_surface, _ = jpg_surface(provisional)
     provisional_mask = _jpeg_leaf_mask(provisional_surface)
-    provisional_lab = cv2.cvtColor(provisional_surface, cv2.COLOR_BGR2LAB).astype(np.float32)
+    provisional_lab = cv2.cvtColor(provisional_surface, cv2.COLOR_BGR2LAB)
     provisional_cells = _cell_geometry(provisional_mask, provisional_lab, spacing, seed)
     address_salt, initial_coverage = _select_address_salt(
         provisional_cells, seed, len(payload_bits)
@@ -567,6 +591,7 @@ def encode_contour_colour(
             "The preserved texture cannot address every payload bit at this resolution. "
             f"Use at least {recommended}px, reduce cell spacing, or shorten the text."
         )
+    del provisional, provisional_surface, provisional_mask, provisional_lab, provisional_cells
     header = _pack_header(
         bool(packet["compressed"]),
         int(packet["body_length"]),
@@ -578,12 +603,13 @@ def encode_contour_colour(
     # Establish the visible outline first, then pass it through the requested
     # JPG profile once. Payload positions are derived from this visible result,
     # not from an alpha mask or an unpublished source image.
-    canvas = clean_canvas.copy()
     _draw_protocol(canvas, mask, header_bits)
     carrier, _ = jpg_surface(canvas)
-    base_carrier = carrier.copy()
+    base_carrier = carrier
     reference = carrier
     encoded = carrier
+    image_size = [int(carrier.shape[1]), int(carrier.shape[0])]
+    del canvas
     cells: list[dict[str, Any]] = []
     final_buffer: np.ndarray | None = None
     stabilized = False
@@ -593,8 +619,9 @@ def encode_contour_colour(
     for pass_index in range(4):
         stabilization_passes = pass_index + 1
         reference_mask = _jpeg_leaf_mask(reference)
-        reference_lab = cv2.cvtColor(reference, cv2.COLOR_BGR2LAB).astype(np.float32)
+        reference_lab = cv2.cvtColor(reference, cv2.COLOR_BGR2LAB)
         cells = _cell_geometry(reference_mask, reference_lab, spacing, seed)
+        del reference_mask, reference_lab
         final_coverage = _address_coverage(cells, seed, address_salt, len(payload_bits))
         if not final_coverage or min(final_coverage) <= 0:
             recommended = int(math.ceil(max(mask.shape) * 1.25 / 256.0) * 256)
@@ -602,13 +629,14 @@ def encode_contour_colour(
                 "Some payload addresses have no usable source texture. "
                 f"Use at least {recommended}px, reduce cell spacing, or shorten the text."
             )
-        lab = cv2.cvtColor(base_carrier, cv2.COLOR_BGR2LAB).astype(np.float32)
+        lab = cv2.cvtColor(base_carrier, cv2.COLOR_BGR2LAB)
         for cell in cells:
             bit_index = _address_bucket(
                 int(cell["grid_order"]), seed, address_salt, len(payload_bits)
             )
             _apply_colour_bit(lab, cell, payload_bits[bit_index], float(chroma_delta))
-        encoded = cv2.cvtColor(np.clip(lab, 0, 255).astype(np.uint8), cv2.COLOR_LAB2BGR)
+        encoded = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+        del lab
         encoded[mask == 0] = 255
         protocol = _draw_protocol(encoded, mask, header_bits)
 
@@ -618,12 +646,14 @@ def encode_contour_colour(
                 raise OSError("Could not encode the JPG colour carrier.")
             decoded_output = cv2.imdecode(output_buffer, cv2.IMREAD_COLOR)
             final_buffer = output_buffer
+            encoded = None
         else:
             decoded_output = encoded.copy()
 
         next_mask = _jpeg_leaf_mask(decoded_output)
-        next_lab = cv2.cvtColor(decoded_output, cv2.COLOR_BGR2LAB).astype(np.float32)
+        next_lab = cv2.cvtColor(decoded_output, cv2.COLOR_BGR2LAB)
         next_cells = _cell_geometry(next_mask, next_lab, spacing, seed)
+        del next_mask, next_lab
         current_signature = [(cell["grid_order"], cell["roi"]) for cell in cells]
         next_signature = [(cell["grid_order"], cell["roi"]) for cell in next_cells]
         reference = decoded_output
@@ -645,7 +675,7 @@ def encode_contour_colour(
         "mode": "jpg-colour-carrier",
         "source": str(source_path),
         "output": str(output_path),
-        "image_size": [int(encoded.shape[1]), int(encoded.shape[0])],
+        "image_size": image_size,
         "jpeg_quality": int(jpeg_quality),
         "protocol": {
             **protocol,
@@ -688,7 +718,7 @@ def decode_contour_colour(image_path: Path) -> dict[str, Any]:
         raise FileNotFoundError(image_path)
     mask = _jpeg_leaf_mask(image)
     header, sync = _read_header(image, mask)
-    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB).astype(np.float32)
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
     seed = (int(header["body_length"]) << 16) ^ int(header["encoded_bits"]) ^ 0xC0110A
     cells = _cell_geometry(mask, lab, int(header["cell_spacing"]), seed)
     encoded_count = int(header["encoded_bits"])
