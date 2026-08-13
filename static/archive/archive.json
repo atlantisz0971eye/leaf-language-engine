@@ -1,0 +1,547 @@
+{
+  "version": "Ga1a-web-archive-1.0",
+  "sourceArchive": "20260807_220237",
+  "count": 20,
+  "entries": [
+    {
+      "id": "leaf-01",
+      "index": 1,
+      "label": "William Shakespeare",
+      "sourceText": "William Shakespeare,\n“The trees, though summer, yet do wear their leaves.”",
+      "decodedText": "William Shakespeare,\n“Trje treres, thpph sumeer, ytwt do wear their leaves.”",
+      "leaf": "1554",
+      "sound": "叶子_1.wav",
+      "audio": "/static/archive/assets/leaf-01/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-01/original.webp",
+        "clean": "/static/archive/assets/leaf-01/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-01/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-01/difference.webp",
+        "confidence": "/static/archive/assets/leaf-01/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-01/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-01/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 87.8,
+        "affectedWords": 5,
+        "changedCells": 2577,
+        "confidence": 71.0,
+        "duration": 135.2,
+        "impacts": 549
+      }
+    },
+    {
+      "id": "leaf-02",
+      "index": 2,
+      "label": "Walt Whitman, Song of Myself",
+      "sourceText": "Walt Whitman, Song of Myself\n“I believe a leaf of grass is no less than the journey-work of the stars.”",
+      "decodedText": "Walt Whitman, Song of Myself\n“I blebe a leaf of gars is no lees tggagn the journey-work of the stars.”",
+      "leaf": "1560",
+      "sound": "y 2_1.wav",
+      "audio": "/static/archive/assets/leaf-02/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-02/original.webp",
+        "clean": "/static/archive/assets/leaf-02/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-02/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-02/difference.webp",
+        "confidence": "/static/archive/assets/leaf-02/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-02/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-02/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 91.3,
+        "affectedWords": 5,
+        "changedCells": 2737,
+        "confidence": 62.6,
+        "duration": 110.6,
+        "impacts": 362
+      }
+    },
+    {
+      "id": "leaf-03",
+      "index": 3,
+      "label": "Walt Whitman, Song of Myself",
+      "sourceText": "Walt Whitman, Song of Myself\n“And now it seems to me the beautiful uncut hair of graves.”",
+      "decodedText": "Walt Whitman, Song of Myself\n“And mia it srms to me tjw beutul unvt hair of graves.”",
+      "leaf": "1553",
+      "sound": "y 11_1.wav",
+      "audio": "/static/archive/assets/leaf-03/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-03/original.webp",
+        "clean": "/static/archive/assets/leaf-03/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-03/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-03/difference.webp",
+        "confidence": "/static/archive/assets/leaf-03/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-03/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-03/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 86.5,
+        "affectedWords": 5,
+        "changedCells": 2379,
+        "confidence": 69.5,
+        "duration": 34.8,
+        "impacts": 124
+      }
+    },
+    {
+      "id": "leaf-04",
+      "index": 4,
+      "label": "Walt Whitman, Song of Myself",
+      "sourceText": "Walt Whitman, Song of Myself\n“I lean and loafe at my ease observing a spear of summer grass.”",
+      "decodedText": "Walt Whitman, Song of Myself\n“I lean aemmd loafde at my eare obseeving a spear of summer grass.”",
+      "leaf": "1569",
+      "sound": "y 8_1.wav",
+      "audio": "/static/archive/assets/leaf-04/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-04/original.webp",
+        "clean": "/static/archive/assets/leaf-04/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-04/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-04/difference.webp",
+        "confidence": "/static/archive/assets/leaf-04/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-04/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-04/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 93.5,
+        "affectedWords": 5,
+        "changedCells": 1924,
+        "confidence": 75.2,
+        "duration": 86.0,
+        "impacts": 358
+      }
+    },
+    {
+      "id": "leaf-05",
+      "index": 5,
+      "label": "Anonymous — The weeds in wheels shoot long and",
+      "sourceText": "“The weeds in wheels, shoot long and lovely and lush.”",
+      "decodedText": "“Thhe wtds in whls, sigt lvig and lovely and lush.”",
+      "leaf": "1564",
+      "sound": "y 4_1.wav",
+      "audio": "/static/archive/assets/leaf-05/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-05/original.webp",
+        "clean": "/static/archive/assets/leaf-05/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-05/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-05/difference.webp",
+        "confidence": "/static/archive/assets/leaf-05/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-05/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-05/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 81.5,
+        "affectedWords": 5,
+        "changedCells": 1563,
+        "confidence": 72.8,
+        "duration": 55.3,
+        "impacts": 214
+      }
+    },
+    {
+      "id": "leaf-06",
+      "index": 6,
+      "label": "Robert Frost",
+      "sourceText": "Robert Frost\n\"Nature's first green is gold, / Her hardest hue to hold.\"",
+      "decodedText": "Robert Frost\n\"Nature's fiirrt grrran is glooid, / Heeyy hrddsset hue to hold.\"",
+      "leaf": "1551",
+      "sound": "y 6_1.wav",
+      "audio": "/static/archive/assets/leaf-06/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-06/original.webp",
+        "clean": "/static/archive/assets/leaf-06/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-06/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-06/difference.webp",
+        "confidence": "/static/archive/assets/leaf-06/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-06/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-06/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 78.9,
+        "affectedWords": 5,
+        "changedCells": 3042,
+        "confidence": 79.5,
+        "duration": 47.1,
+        "impacts": 108
+      }
+    },
+    {
+      "id": "leaf-07",
+      "index": 7,
+      "label": "Henry David Thoreau — Walden",
+      "sourceText": "Henry David Thoreau — Walden\n“The pines, black and sombre, stood in a dense forest.”",
+      "decodedText": "Henry David Thoreau — Walden\n“Tgggee pbwws, bksk snf smoeee, stood in a dense forest.”",
+      "leaf": "1568",
+      "sound": "y 3_1.wav",
+      "audio": "/static/archive/assets/leaf-07/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-07/original.webp",
+        "clean": "/static/archive/assets/leaf-07/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-07/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-07/difference.webp",
+        "confidence": "/static/archive/assets/leaf-07/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-07/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-07/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 81.0,
+        "affectedWords": 5,
+        "changedCells": 1477,
+        "confidence": 72.7,
+        "duration": 43.7,
+        "impacts": 134
+      }
+    },
+    {
+      "id": "leaf-08",
+      "index": 8,
+      "label": "Henry David Thoreau — Walden",
+      "sourceText": "Henry David Thoreau — Walden\n“The leaves of the trees were just beginning to turn.”",
+      "decodedText": "Henry David Thoreau — Walden\n“The lacs of rgrr tees weaee juswt beginning to turn.”",
+      "leaf": "1559",
+      "sound": "叶子 3_1.wav",
+      "audio": "/static/archive/assets/leaf-08/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-08/original.webp",
+        "clean": "/static/archive/assets/leaf-08/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-08/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-08/difference.webp",
+        "confidence": "/static/archive/assets/leaf-08/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-08/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-08/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 86.8,
+        "affectedWords": 5,
+        "changedCells": 4797,
+        "confidence": 64.0,
+        "duration": 61.4,
+        "impacts": 250
+      }
+    },
+    {
+      "id": "leaf-09",
+      "index": 9,
+      "label": "Henry David Thoreau — Walden",
+      "sourceText": "Henry David Thoreau — Walden\n“The leaves are falling, and the trees are becoming bare.”",
+      "decodedText": "Henry David Thoreau — Walden\n“The lers aeree fang, anannd thje traes are becoming bare.”",
+      "leaf": "1566",
+      "sound": "y 10_1.wav",
+      "audio": "/static/archive/assets/leaf-09/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-09/original.webp",
+        "clean": "/static/archive/assets/leaf-09/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-09/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-09/difference.webp",
+        "confidence": "/static/archive/assets/leaf-09/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-09/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-09/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 85.1,
+        "affectedWords": 6,
+        "changedCells": 2051,
+        "confidence": 74.3,
+        "duration": 34.1,
+        "impacts": 141
+      }
+    },
+    {
+      "id": "leaf-10",
+      "index": 10,
+      "label": "John Muir — My First Summer in the Sierra",
+      "sourceText": "John Muir — My First Summer in the Sierra\n“The trees seem to be growing everywhere.”",
+      "decodedText": "John Muir — My First Summer in the Sierra\n“Rhw tres sqem to be growing everywhere.”",
+      "leaf": "1567",
+      "sound": "叶子 2_1.wav",
+      "audio": "/static/archive/assets/leaf-10/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-10/original.webp",
+        "clean": "/static/archive/assets/leaf-10/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-10/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-10/difference.webp",
+        "confidence": "/static/archive/assets/leaf-10/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-10/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-10/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 95.2,
+        "affectedWords": 3,
+        "changedCells": 2877,
+        "confidence": 60.4,
+        "duration": 78.5,
+        "impacts": 309
+      }
+    },
+    {
+      "id": "leaf-11",
+      "index": 11,
+      "label": "Virginia Woolf — The Waves",
+      "sourceText": "Virginia Woolf — The Waves\n“The leaves are green and thick.”",
+      "decodedText": "Virginia Woolf — The Waves\n“TTgTe levavvees aerte greeen and thick.”",
+      "leaf": "1563",
+      "sound": "y 5_1.wav",
+      "audio": "/static/archive/assets/leaf-11/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-11/original.webp",
+        "clean": "/static/archive/assets/leaf-11/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-11/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-11/difference.webp",
+        "confidence": "/static/archive/assets/leaf-11/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-11/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-11/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 85.0,
+        "affectedWords": 4,
+        "changedCells": 1195,
+        "confidence": 73.6,
+        "duration": 10.2,
+        "impacts": 22
+      }
+    },
+    {
+      "id": "leaf-12",
+      "index": 12,
+      "label": "Virginia Woolf — The Waves",
+      "sourceText": "Virginia Woolf — The Waves\n“The leaves flutter in the wind.”",
+      "decodedText": "Virginia Woolf — The Waves\n“Rfee levws fllterr in the wind.”",
+      "leaf": "1555",
+      "sound": "y 7_1.wav",
+      "audio": "/static/archive/assets/leaf-12/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-12/original.webp",
+        "clean": "/static/archive/assets/leaf-12/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-12/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-12/difference.webp",
+        "confidence": "/static/archive/assets/leaf-12/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-12/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-12/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 86.7,
+        "affectedWords": 3,
+        "changedCells": 1962,
+        "confidence": 73.5,
+        "duration": 30.7,
+        "impacts": 124
+      }
+    },
+    {
+      "id": "leaf-13",
+      "index": 13,
+      "label": "Henry David Thoreau — Walden",
+      "sourceText": "Henry David Thoreau — Walden\n“A tree grows where it can.”",
+      "decodedText": "Henry David Thoreau — Walden\n“A taraee gots where it can.”",
+      "leaf": "1558",
+      "sound": "y_1.wav",
+      "audio": "/static/archive/assets/leaf-13/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-13/original.webp",
+        "clean": "/static/archive/assets/leaf-13/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-13/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-13/difference.webp",
+        "confidence": "/static/archive/assets/leaf-13/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-13/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-13/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 93.0,
+        "affectedWords": 2,
+        "changedCells": 2096,
+        "confidence": 57.5,
+        "duration": 71.0,
+        "impacts": 287
+      }
+    },
+    {
+      "id": "leaf-14",
+      "index": 14,
+      "label": "Robin Wall Kimmerer — Braiding Sweetgrass",
+      "sourceText": "Robin Wall Kimmerer — Braiding Sweetgrass\n“Plants speak in a language we have forgotten.”",
+      "decodedText": "Robin Wall Kimmerer — Braiding Sweetgrass\n“Palts spaaak in a lanhuee we have forgotten.”",
+      "leaf": "1557",
+      "sound": "y 9_1.wav",
+      "audio": "/static/archive/assets/leaf-14/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-14/original.webp",
+        "clean": "/static/archive/assets/leaf-14/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-14/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-14/difference.webp",
+        "confidence": "/static/archive/assets/leaf-14/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-14/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-14/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 92.1,
+        "affectedWords": 3,
+        "changedCells": 1080,
+        "confidence": 75.9,
+        "duration": 61.4,
+        "impacts": 148
+      }
+    },
+    {
+      "id": "leaf-15",
+      "index": 15,
+      "label": "John Muir — The Mountains of California",
+      "sourceText": "John Muir — The Mountains of California\n“The foliage of the saplings is dark bluish-green in color,\nwhile the older trees ripen to a warm brownish-yellow tint like Libocedrus.”",
+      "decodedText": "John Muir — The Mountains of California\n“The folgae of tehe spaplliings is daatk bulishg-ern in cooor,\nwhgile rrgr olsr trreees ripen to a warm brownish-yellow tint like Libocedrus.”",
+      "leaf": "1556",
+      "sound": "叶子4_1.wav",
+      "audio": "/static/archive/assets/leaf-15/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-15/original.webp",
+        "clean": "/static/archive/assets/leaf-15/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-15/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-15/difference.webp",
+        "confidence": "/static/archive/assets/leaf-15/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-15/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-15/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 86.9,
+        "affectedWords": 10,
+        "changedCells": 4395,
+        "confidence": 63.1,
+        "duration": 65.5,
+        "impacts": 273
+      }
+    },
+    {
+      "id": "leaf-16",
+      "index": 16,
+      "label": "Anonymous — The bark is rich cinnamon-brown purplish in",
+      "sourceText": "“The bark is rich cinnamon-brown, purplish in young trees and in shady portions\nof the old, while the ground is covered with brown leaves and burs forming\ncolor-masses of extraordinary richness.”",
+      "decodedText": "“The bark is rich cinnamon-brown, purplish in young trees and in shady portions\nof uhhr ijs, woje tke grooeubd is cord wuyh brrwooon leaves and burs forming\ncolor-masses of extraordinary richness.”",
+      "leaf": "1570",
+      "sound": "y 12_1.wav",
+      "audio": "/static/archive/assets/leaf-16/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-16/original.webp",
+        "clean": "/static/archive/assets/leaf-16/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-16/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-16/difference.webp",
+        "confidence": "/static/archive/assets/leaf-16/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-16/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-16/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 88.7,
+        "affectedWords": 9,
+        "changedCells": 2252,
+        "confidence": 79.3,
+        "duration": 142.0,
+        "impacts": 455
+      }
+    },
+    {
+      "id": "leaf-17",
+      "index": 17,
+      "label": "Anonymous — The winds go to every tree fingering",
+      "sourceText": "“The winds go to every tree, fingering every leaf and branch and furrowed bole;\nnot one is forgotten.”",
+      "decodedText": "“The winds go to every tree, fingering every leaf and branch and furrowed bole;\nbit pbbee is forgotten.”",
+      "leaf": "1565",
+      "sound": "叶子_1.wav",
+      "audio": "/static/archive/assets/leaf-17/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-17/original.webp",
+        "clean": "/static/archive/assets/leaf-17/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-17/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-17/difference.webp",
+        "confidence": "/static/archive/assets/leaf-17/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-17/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-17/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 94.1,
+        "affectedWords": 2,
+        "changedCells": 1851,
+        "confidence": 74.0,
+        "duration": 135.2,
+        "impacts": 549
+      }
+    },
+    {
+      "id": "leaf-18",
+      "index": 18,
+      "label": "John Muir — The Mountains of California",
+      "sourceText": "John Muir — The Mountains of California\n“Now whispering and cooing through the branches like a sleepy child,\nnow roaring like the ocean.”",
+      "decodedText": "John Muir — The Mountains of California\n“BBie wisornig eeemd cooing through the brarnxes lkoe a spey ciid,\nboiw roaring like the ocean.”",
+      "leaf": "1562",
+      "sound": "y 9_1.wav",
+      "audio": "/static/archive/assets/leaf-18/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-18/original.webp",
+        "clean": "/static/archive/assets/leaf-18/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-18/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-18/difference.webp",
+        "confidence": "/static/archive/assets/leaf-18/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-18/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-18/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 81.8,
+        "affectedWords": 9,
+        "changedCells": 2328,
+        "confidence": 75.2,
+        "duration": 61.4,
+        "impacts": 148
+      }
+    },
+    {
+      "id": "leaf-19",
+      "index": 19,
+      "label": "Anonymous — The trees were not so tidy then",
+      "sourceText": "“The trees were not so tidy then; they are not so full now.\nThey look best when contrasted with a field of snow.”",
+      "decodedText": "“The trees were not so tidy then; they are not so full now.\nTejry lpopk bwsst wjwn connyrasttted with a field of snow.”",
+      "leaf": "1561",
+      "sound": "y_1.wav",
+      "audio": "/static/archive/assets/leaf-19/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-19/original.webp",
+        "clean": "/static/archive/assets/leaf-19/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-19/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-19/difference.webp",
+        "confidence": "/static/archive/assets/leaf-19/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-19/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-19/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 88.5,
+        "affectedWords": 5,
+        "changedCells": 4034,
+        "confidence": 63.0,
+        "duration": 71.0,
+        "impacts": 287
+      }
+    },
+    {
+      "id": "leaf-20",
+      "index": 20,
+      "label": "Henry David Thoreau — Walden",
+      "sourceText": "Henry David Thoreau — Walden\n“When Winter fringes every bough\nWith his fantastic wreath,\nAnd puts the seal of silence now\nUpon the leaves beneath.”",
+      "decodedText": "Henry David Thoreau — Walden\n“When Wintrter frnegas ewrry boooouugh\nWtorh haus fnatasttc wrettth,\nAnnf pitts ttthe seal of silence now\nUpon the leaves beneath.”",
+      "leaf": "1552",
+      "sound": "y 8_1.wav",
+      "audio": "/static/archive/assets/leaf-20/rubbing.mp3",
+      "images": {
+        "original": "/static/archive/assets/leaf-20/original.webp",
+        "clean": "/static/archive/assets/leaf-20/clean.webp",
+        "disturbed": "/static/archive/assets/leaf-20/disturbed.webp",
+        "difference": "/static/archive/assets/leaf-20/difference.webp",
+        "confidence": "/static/archive/assets/leaf-20/confidence.webp",
+        "waveform": "/static/archive/assets/leaf-20/waveform.webp",
+        "thumb": "/static/archive/assets/leaf-20/thumb.webp"
+      },
+      "metrics": {
+        "fidelity": 81.6,
+        "affectedWords": 11,
+        "changedCells": 2858,
+        "confidence": 73.2,
+        "duration": 86.0,
+        "impacts": 358
+      }
+    }
+  ]
+}

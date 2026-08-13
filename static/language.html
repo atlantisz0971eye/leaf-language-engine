@@ -13,7 +13,7 @@
       <h1>Leaf Carrier</h1>
       <p id="mode-description">Upload a leaf. Check capacity. Export.</p>
     </div>
-    <a href="#analysis-panel">Analysis</a>
+    <nav class="engine-header-links"><a href="/">Archive</a><a href="#analysis-panel">Analysis</a></nav>
   </header>
 
   <nav class="journey" aria-label="Workflow">
@@ -270,7 +270,7 @@
   .eyebrow{margin:0 0 6px;color:var(--red);font-size:10px;letter-spacing:.19em;font-weight:800}
   h1,h2,h3{font-family:Georgia,"Times New Roman",serif;font-weight:500}
   h1{margin:0;font-size:clamp(38px,7vw,64px)} header p:last-child{margin:6px 0 0;color:var(--muted)}
-  header a{color:var(--muted);font-size:12px;text-decoration:none} header a:hover{color:var(--red)}
+  header a{color:var(--muted);font-size:12px;text-decoration:none} header a:hover{color:var(--red)}.engine-header-links{display:flex;align-items:center;gap:16px}.engine-header-links a:first-child{padding:8px 12px;border:1px solid var(--line);border-radius:99px}
   .journey{display:grid;grid-template-columns:auto 1fr auto 1fr auto 1fr auto 1fr auto;align-items:center;width:min(820px,100%);margin:0 auto 24px;color:var(--muted)}
   .journey span{display:flex;align-items:center;gap:7px;font-size:12px}.journey b{display:grid;place-items:center;width:26px;height:26px;border:1px solid var(--line);border-radius:50%;font-size:11px}
   .journey i{height:1px;margin:0 12px;background:var(--line)}.journey span.active{color:var(--green)}.journey span.active b{color:var(--button-text);border-color:var(--green);background:var(--green)}

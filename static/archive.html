@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An archive of leaf rubbings, poems, recorded sound and encoded images.">
+  <title>Ga1a — Poetry Leaf Archive</title>
+  <link rel="stylesheet" href="/static/archive.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="Ga1a archive home">
+      <span>GA1A</span>
+      <small>POETRY LEAF ARCHIVE</small>
+    </a>
+    <div class="header-note">Translation leaves a material trace.</div>
+    <a class="engine-link" href="/engine"><span>Open</span> Leaf Engine <b>↗</b></a>
+  </header>
+
+  <main class="archive-shell">
+    <section class="record" aria-live="polite">
+      <div class="record-topline">
+        <span id="record-number">ARCHIVE 01 / 20</span>
+        <span id="record-carrier">LEAF 1554 · SOUND 叶子_1.wav</span>
+      </div>
+
+      <div class="record-stage">
+        <button class="record-nav previous" id="previous-record" aria-label="Previous leaf">←</button>
+        <figure>
+          <img id="record-image" alt="Selected encoded leaf">
+          <figcaption id="record-caption">Disturbed encoding</figcaption>
+        </figure>
+        <button class="record-nav next" id="next-record" aria-label="Next leaf">→</button>
+      </div>
+
+      <nav class="view-tabs" aria-label="Encoding stages">
+        <button data-view="original">Original</button>
+        <button data-view="clean">Clean encoding</button>
+        <button class="active" data-view="disturbed">Disturbed</button>
+        <button data-view="difference">Difference</button>
+        <button data-view="confidence">Confidence</button>
+      </nav>
+
+      <div class="record-text">
+        <div class="source-copy">
+          <p class="section-label">SOURCE TEXT</p>
+          <blockquote id="source-text"></blockquote>
+        </div>
+        <div class="decoded-copy">
+          <p class="section-label">HARD DECODE</p>
+          <blockquote id="decoded-text"></blockquote>
+        </div>
+      </div>
+
+      <div class="sound-row">
+        <button class="sound-toggle" id="sound-toggle" type="button" aria-label="Play rubbing sound">
+          <span class="sound-icon">▶</span>
+          <span><b>Rubbing sound</b><small id="sound-name">—</small></span>
+        </button>
+        <img id="waveform-image" alt="Quantized rubbing sound waveform">
+        <audio id="archive-audio" preload="none"></audio>
+      </div>
+
+      <dl class="record-metrics">
+        <div><dt id="metric-fidelity">—</dt><dd>Source fidelity</dd></div>
+        <div><dt id="metric-words">—</dt><dd>Affected words</dd></div>
+        <div><dt id="metric-cells">—</dt><dd>Changed cells</dd></div>
+        <div><dt id="metric-confidence">—</dt><dd>Decode confidence</dd></div>
+      </dl>
+    </section>
+
+    <aside class="index-panel">
+      <div class="index-heading">
+        <div><p>COLLECTION</p><h1>Twenty Leaves</h1></div>
+        <span id="index-count">20 records</span>
+      </div>
+      <p class="index-intro">Leaf rubbings carry poetry through colour, contour and recorded impact. Select a leaf to unfold its translation.</p>
+      <div class="leaf-index" id="leaf-index" aria-label="Archive leaves"></div>
+    </aside>
+  </main>
+
+  <footer>
+    <p>Leaf rubbings · poetry · sound · encoded images</p>
+    <a href="/engine">Create a translation in the Leaf Engine →</a>
+  </footer>
+
+  <script src="/static/archive.js"></script>
+</body>
+</html>

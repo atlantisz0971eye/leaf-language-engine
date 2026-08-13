@@ -1112,14 +1112,14 @@ class LeafToolHandler(BaseHTTPRequestHandler):
             )
             return
         if path == "/":
-            self._file(STATIC_DIR / "language.html")
+            self._file(STATIC_DIR / "archive.html")
             return
-        if path in {"/language", "/carrier"}:
+        if path in {"/engine", "/language", "/carrier"}:
             self._file(STATIC_DIR / "language.html")
             return
         if path == "/analysis":
             self.send_response(302)
-            self.send_header("Location", "/?panel=analysis")
+            self.send_header("Location", "/engine?panel=analysis")
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
@@ -1228,11 +1228,17 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 self.send_error(404)
             return
         if path.startswith("/static/"):
-            candidate = (STATIC_DIR / path.removeprefix("/static/")).resolve()
-            if candidate.parent == STATIC_DIR.resolve():
+            relative = unquote(path.removeprefix("/static/")).lstrip("/")
+            candidate = (STATIC_DIR / relative).resolve()
+            try:
+                candidate.relative_to(STATIC_DIR.resolve())
+            except ValueError:
+                self.send_error(403)
+                return
+            if candidate.is_file():
                 self._file(candidate)
             else:
-                self.send_error(403)
+                self.send_error(404)
             return
         self.send_error(404)
 
