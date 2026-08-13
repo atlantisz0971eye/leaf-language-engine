@@ -112,16 +112,37 @@ def _graph_transform(graph: dict[str, Any]) -> Callable[[tuple[float, float]], t
     main_ids = [int(item) for item in graph["main_path"]["node_ids"]]
     if len(main_ids) < 2:
         raise ValueError("The specimen graph has no usable primary vein.")
-    start = nodes[main_ids[0]]
-    end = nodes[main_ids[-1]]
-    angle = -math.atan2(float(end["y"]) - float(start["y"]), float(end["x"]) - float(start["x"]))
+    ridge = graph.get("main_path", {}).get("pixel_path", [])
+    if len(ridge) >= 2:
+        start_x, start_y = map(float, ridge[0])
+        end_x, end_y = map(float, ridge[-1])
+    else:
+        start = nodes[main_ids[0]]
+        end = nodes[main_ids[-1]]
+        start_x, start_y = float(start["x"]), float(start["y"])
+        end_x, end_y = float(end["x"]), float(end["y"])
+    angle = -math.atan2(end_y - start_y, end_x - start_x)
     cosine, sine = math.cos(angle), math.sin(angle)
 
     def rotate(point: tuple[float, float]) -> tuple[float, float]:
         x, y = point
         return x * cosine - y * sine, x * sine + y * cosine
 
-    rotated = [rotate((float(node["x"]), float(node["y"]))) for node in graph["nodes"]]
+    component_edges = set(int(item) for item in graph.get("specimen_component_edge_ids", []))
+    if component_edges:
+        component_nodes = {
+            int(edge[key])
+            for edge in graph["edges"]
+            if int(edge["id"]) in component_edges
+            for key in ("source", "target")
+        }
+        rotated = [
+            rotate((float(nodes[node_id]["x"]), float(nodes[node_id]["y"])))
+            for node_id in component_nodes
+        ]
+    else:
+        rotated = [rotate((float(node["x"]), float(node["y"]))) for node in graph["nodes"]]
+    rotated.extend(rotate((float(point[0]), float(point[1]))) for point in ridge)
     xs = [point[0] for point in rotated]
     ys = [point[1] for point in rotated]
     minimum_x, maximum_x = min(xs), max(xs)
@@ -197,7 +218,10 @@ def render_encoding_png(packet: dict[str, Any]) -> bytes:
     transform = _graph_transform(graph)
     payload_states = _payload_states(packet)
 
+    component_edges = set(int(item) for item in graph.get("specimen_component_edge_ids", []))
     for edge in graph["edges"]:
+        if component_edges and int(edge["id"]) not in component_edges:
+            continue
         points = [transform((float(x), float(y))) for x, y in edge["path"]]
         state = payload_states.get(int(edge["id"]))
         if state is None:
@@ -212,10 +236,14 @@ def render_encoding_png(packet: dict[str, Any]) -> bytes:
         _draw_path(canvas, points, color, logical_width, output_scale)
 
     nodes = {int(node["id"]): node for node in graph["nodes"]}
-    main_points = [
-        transform((float(nodes[int(node_id)]["x"]), float(nodes[int(node_id)]["y"])))
-        for node_id in graph["main_path"]["node_ids"]
-    ]
+    ridge = graph.get("main_path", {}).get("pixel_path", [])
+    if len(ridge) >= 2:
+        main_points = [transform((float(x), float(y))) for x, y in ridge]
+    else:
+        main_points = [
+            transform((float(nodes[int(node_id)]["x"]), float(nodes[int(node_id)]["y"])))
+            for node_id in graph["main_path"]["node_ids"]
+        ]
     protocol_symbols = [int(symbol) for symbol in packet["protocol_codec"]["symbols"]]
     boundaries = _protocol_boundaries(main_points, len(protocol_symbols))
     for index, state in enumerate(protocol_symbols):

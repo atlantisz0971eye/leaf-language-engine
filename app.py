@@ -4,7 +4,6 @@ import base64
 import csv
 import gc
 import hashlib
-import hmac
 import json
 import mimetypes
 import os
@@ -37,6 +36,7 @@ from contour_color_codec import (
     estimate_contour_colour_capacity,
 )
 from specimen_ingest import ingest_specimen
+from nmns_ingest import isolate_nmns_scan
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -59,7 +59,6 @@ OPEN_BROWSER = os.environ.get(
     "LEAF_OPEN_BROWSER",
     "1" if HOST in {"127.0.0.1", "localhost"} else "0",
 ).lower() in {"1", "true", "yes"}
-ACCESS_PASSWORD = os.environ.get("LEAF_ACCESS_PASSWORD", "").strip()
 MAX_CONCURRENT_JOBS = max(1, int(os.environ.get("LEAF_MAX_CONCURRENT_JOBS", "1")))
 RUBBING_RESOLUTIONS = (2048, 3072, 4096, 6144, 8192)
 MAX_RUBBING_RESOLUTION = max(
@@ -100,12 +99,24 @@ def prepare_runtime_data() -> None:
         destination = DATA_DIR / relative
         if not source.is_dir():
             continue
+        outdated_analysis_dirs: set[str] = set()
+        if relative == "analysis_output":
+            for seed_graph in source.glob("*/graph.json"):
+                target_graph = destination / seed_graph.relative_to(source)
+                try:
+                    seed_version = json.loads(seed_graph.read_text(encoding="utf-8")).get("version")
+                    target_version = json.loads(target_graph.read_text(encoding="utf-8")).get("version")
+                except (OSError, ValueError, AttributeError):
+                    seed_version, target_version = "seed", None
+                if seed_version != target_version:
+                    outdated_analysis_dirs.add(seed_graph.parent.name)
         for item in source.rglob("*"):
             if not item.is_file():
                 continue
             target = destination / item.relative_to(source)
             if target.exists():
-                continue
+                if relative != "analysis_output" or item.parent.name not in outdated_analysis_dirs:
+                    continue
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(item, target)
 
@@ -442,6 +453,19 @@ def nmns_specimen_record(image_path: Path) -> dict:
     image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
     height, width = image.shape[:2] if image is not None else (0, 0)
     status = specimen_status(image_path)
+    preview_names = ("original", "vessel_score", "mask", "skeleton", "overlay", "primary", "heatmap")
+    preview_directory = OUTPUT_DIR / image_path.stem
+    previews = {
+        name: f"/analysis-preview/{image_path.stem}/{name}.png"
+        for name in preview_names
+        if (preview_directory / f"{name}.png").is_file()
+    }
+    source_plate = next(
+        (item for item in (preview_directory / "source.jpg", preview_directory / "source.png") if item.is_file()),
+        None,
+    )
+    if source_plate is not None:
+        previews["source"] = f"/analysis-preview/{image_path.stem}/{source_plate.name}"
     return {
         "id": image_path.name,
         "name": image_path.stem.replace("_", " "),
@@ -451,6 +475,7 @@ def nmns_specimen_record(image_path: Path) -> dict:
         "library": "nmns",
         "source_type": "nmns-vein-graph",
         "source_url": f"/source/{image_path.name}",
+        "analysis_urls": previews,
         **status,
     }
 
@@ -464,10 +489,9 @@ def run_nmns_specimen_job(
     created = False
     try:
         update_background_job(identifier, status="running", progress=10, stage="Reading scan")
-        decoded = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
-        if decoded is None:
-            raise ValueError("The NMNS scan could not be decoded.")
-        ok, encoded = cv2.imencode(".png", decoded, [cv2.IMWRITE_PNG_COMPRESSION, 3])
+        isolation = isolate_nmns_scan(raw)
+        update_background_job(identifier, progress=24, stage="Isolating leaf from plate")
+        ok, encoded = cv2.imencode(".png", isolation.image, [cv2.IMWRITE_PNG_COMPRESSION, 3])
         if not ok:
             raise ValueError("The NMNS scan could not be normalized.")
         normalized = encoded.tobytes()
@@ -478,10 +502,24 @@ def run_nmns_specimen_job(
         if created:
             destination.write_bytes(normalized)
 
-        update_background_job(identifier, progress=32, stage="Extracting veins")
-        analyzed, selected_settings = adaptive_analysis(destination, AnalysisSettings())
+        update_background_job(identifier, progress=38, stage="Extracting multiscale veins")
+        safe_settings = AnalysisSettings(1100, 82.0, 14.0, 10)
+        analyzed, selected_settings = adaptive_analysis(destination, safe_settings)
         update_background_job(identifier, progress=78, stage="Building vein graph")
-        export_result(analyzed, OUTPUT_DIR)
+        export_destination = export_result(analyzed, OUTPUT_DIR)
+        source_suffix = ".png" if str(filename).lower().endswith(".png") else ".jpg"
+        (export_destination / f"source{source_suffix}").write_bytes(raw)
+        (export_destination / "isolation.json").write_text(
+            json.dumps(
+                {
+                    "method": isolation.method,
+                    "confidence": isolation.confidence,
+                    "crop_box": list(isolation.crop_box),
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
         STYLE_ANALYSIS_CACHE.clear()
         specimen = nmns_specimen_record(destination)
         if not specimen["ready"]:
@@ -499,6 +537,10 @@ def run_nmns_specimen_job(
                     "graph_edges": specimen.get("graph_edges", 0),
                     "main_edges": specimen.get("main_edges", 0),
                     "branch_anchors": specimen.get("branch_anchors", 0),
+                    "venation_type": analyzed["graph"].get("venation", {}).get("type", "unknown"),
+                    "main_path_confidence": analyzed["graph"].get("venation", {}).get("main_path_confidence", 0),
+                    "isolation_confidence": isolation.confidence,
+                    "previews": specimen.get("analysis_urls", {}),
                     "selected_settings": {
                         "max_side": selected_settings.max_side,
                         "sensitivity": selected_settings.sensitivity,
@@ -506,7 +548,7 @@ def run_nmns_specimen_job(
                         "min_component": selected_settings.min_component,
                     },
                 },
-                "message": "Vein graph ready for text",
+                "message": "Leaf isolated and vein graph ready",
             },
         )
     except Exception as exc:
@@ -819,7 +861,8 @@ def specimen_status(image_path: Path) -> dict:
         graph = json.loads(graph_path.read_text(encoding="utf-8"))
         stats = graph.get("stats", {})
         ready = bool(
-            graph.get("main_path", {}).get("edge_ids")
+            graph.get("version") == "leaf-surface-graph-0.8"
+            and graph.get("main_path", {}).get("edge_ids")
             and int(stats.get("edge_count", 0)) >= 8
         )
         return {
@@ -828,6 +871,8 @@ def specimen_status(image_path: Path) -> dict:
             "graph_edges": int(stats.get("edge_count", 0)),
             "main_edges": int(stats.get("main_edge_count", 0)),
             "branch_anchors": int(stats.get("secondary_anchor_count", 0)),
+            "venation_type": str(stats.get("venation_type", "unknown")),
+            "main_path_confidence": float(stats.get("main_path_confidence", 0)),
         }
     except (OSError, ValueError, TypeError):
         return {"prepared": False, "ready": False}
@@ -878,9 +923,12 @@ def cached_analysis(
 
 def analysis_ready(result: dict) -> bool:
     graph = result.get("graph", {})
+    confidence = float(graph.get("venation", {}).get("main_path_confidence", graph.get("stats", {}).get("main_path_confidence", 0)))
     return bool(
-        graph.get("main_path", {}).get("edge_ids")
+        graph.get("version") == "leaf-surface-graph-0.8"
+        and graph.get("main_path", {}).get("edge_ids")
         and int(graph.get("stats", {}).get("edge_count", 0)) >= 8
+        and confidence >= 28
     )
 
 
@@ -903,7 +951,9 @@ def adaptive_analysis(image_path: Path, settings: AnalysisSettings) -> tuple[dic
         edges = int(stats.get("edge_count", 0))
         main_edges = int(stats.get("main_edge_count", 0))
         anchors = int(stats.get("secondary_anchor_count", 0))
-        score = main_edges * 40 + anchors * 12 + min(edges, 2500)
+        confidence = float(result["graph"].get("venation", {}).get("main_path_confidence", 0))
+        score = confidence * 85 + anchors * 8 + min(edges, 2200)
+        score -= max(0, main_edges - 55) * 35
         if not result["graph"].get("main_path", {}).get("edge_ids"):
             score -= 100_000
         if edges > 7000:
@@ -1047,24 +1097,6 @@ class LeafToolHandler(BaseHTTPRequestHandler):
             raise ValueError("The request exceeds the 64 MB safety limit.")
         return json.loads(self.rfile.read(length).decode("utf-8"))
 
-    def _authorized(self) -> bool:
-        if not ACCESS_PASSWORD:
-            return True
-        supplied = self.headers.get("Authorization", "")
-        if supplied.startswith("Basic "):
-            try:
-                credentials = base64.b64decode(supplied[6:]).decode("utf-8")
-                _, password = credentials.split(":", 1)
-                if hmac.compare_digest(password, ACCESS_PASSWORD):
-                    return True
-            except (ValueError, UnicodeDecodeError):
-                pass
-        self.send_response(401)
-        self.send_header("WWW-Authenticate", 'Basic realm="Leaf Language Engine"')
-        self.send_header("Content-Length", "0")
-        self.end_headers()
-        return False
-
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path == "/health":
@@ -1079,8 +1111,6 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 }
             )
             return
-        if not self._authorized():
-            return
         if path == "/":
             self._file(STATIC_DIR / "language.html")
             return
@@ -1088,7 +1118,10 @@ class LeafToolHandler(BaseHTTPRequestHandler):
             self._file(STATIC_DIR / "language.html")
             return
         if path == "/analysis":
-            self._file(STATIC_DIR / "index.html")
+            self.send_response(302)
+            self.send_header("Location", "/?panel=analysis")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
             return
         if path.startswith("/api/jobs/"):
             try:
@@ -1106,19 +1139,9 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                     else int(image.shape[2]) if image is not None
                     else 0
                 )
-                items.append(
-                    {
-                        "name": image_path.name,
-                        "width": width,
-                        "height": height,
-                        "channels": channels,
-                        "id": image_path.name,
-                        "display_name": image_path.stem.replace("_", " "),
-                        "source_type": "nmns-vein-graph",
-                        "source_url": f"/source/{image_path.name}",
-                        **specimen_status(image_path),
-                    }
-                )
+                item = nmns_specimen_record(image_path)
+                item.update({"channels": channels, "display_name": item["name"]})
+                items.append(item)
             self._json({"images": items, "image_dir": str(IMAGE_DIR), "output_dir": str(OUTPUT_DIR)})
             return
         if path == "/api/language/status":
@@ -1191,6 +1214,19 @@ class LeafToolHandler(BaseHTTPRequestHandler):
             except FileNotFoundError:
                 self.send_error(404)
             return
+        if path.startswith("/analysis-preview/"):
+            relative = unquote(path.removeprefix("/analysis-preview/")).lstrip("/")
+            candidate = (OUTPUT_DIR / relative).resolve()
+            try:
+                candidate.relative_to(OUTPUT_DIR.resolve())
+            except ValueError:
+                self.send_error(403)
+                return
+            if candidate.is_file():
+                self._file(candidate)
+            else:
+                self.send_error(404)
+            return
         if path.startswith("/static/"):
             candidate = (STATIC_DIR / path.removeprefix("/static/")).resolve()
             if candidate.parent == STATIC_DIR.resolve():
@@ -1202,8 +1238,6 @@ class LeafToolHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         try:
-            if not self._authorized():
-                return
             body = self._body()
             if self.path == "/api/jobs/specimen":
                 raw, filename = decode_specimen_source_upload(body)
@@ -1521,7 +1555,8 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 settings = AnalysisSettings.from_dict(body.get("settings"))
                 result = analyze_image(image_path, settings)
                 destination = export_result(result, OUTPUT_DIR)
-                self._json({"ok": True, "destination": str(destination)})
+                STYLE_ANALYSIS_CACHE.clear()
+                self._json({"ok": True, "destination": str(destination), "result": public_result(result)})
                 return
 
             if self.path == "/api/export-all":

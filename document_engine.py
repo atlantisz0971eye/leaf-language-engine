@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from statistics import median
 from pathlib import Path
@@ -136,28 +137,37 @@ def _graph_capacity_profile(
 
     def walk_subtree(node_id: int, position: float) -> None:
         nonlocal tree_edge_count
-        choices = sorted(
-            (
-                edge
-                for edge in incident.get(node_id, [])
-                if int(edge["id"]) not in visited and int(edge["id"]) not in main_edges
-            ),
-            key=lambda edge: (
-                int(edge.get("order", 6)),
-                -float(edge.get("mean_width_px", 1)),
-                int(edge["id"]),
-            ),
-        )
-        for edge in choices:
-            edge_id = int(edge["id"])
-            visited.add(edge_id)
-            tree_edge_count += 1
-            lengths[zone(position)] += float(edge.get("length_px", 0)) * 2.0
-            next_node = (
-                int(edge["target"]) if int(edge["source"]) == node_id else int(edge["source"])
+        stack = [node_id]
+        while stack:
+            current_node = stack.pop()
+            choices = sorted(
+                (
+                    edge
+                    for edge in incident.get(current_node, [])
+                    if int(edge["id"]) not in visited
+                    and int(edge["id"]) not in main_edges
+                ),
+                key=lambda edge: (
+                    int(edge.get("order", 6)),
+                    -float(edge.get("mean_width_px", 1)),
+                    int(edge["id"]),
+                ),
+                reverse=True,
             )
-            if next_node not in main_nodes:
-                walk_subtree(next_node, position)
+            for edge in choices:
+                edge_id = int(edge["id"])
+                if edge_id in visited:
+                    continue
+                visited.add(edge_id)
+                tree_edge_count += 1
+                lengths[zone(position)] += float(edge.get("length_px", 0)) * 2.0
+                next_node = (
+                    int(edge["target"])
+                    if int(edge["source"]) == current_node
+                    else int(edge["source"])
+                )
+                if next_node not in main_nodes:
+                    stack.append(next_node)
 
     denominator = max(1, len(main_node_ids) - 1)
     for index, node_id in enumerate(main_node_ids):
@@ -402,6 +412,198 @@ def _branch_carrier_plan(
         item = carrier(edges[int(edge_id)], "protocol")
         if item:
             main_carriers.append(item)
+
+    ridge = [tuple(map(float, point)) for point in graph.get("main_path", {}).get("pixel_path", [])]
+    if len(ridge) >= 2:
+        ridge_length = sum(
+            math.hypot(b[0] - a[0], b[1] - a[1])
+            for a, b in zip(ridge, ridge[1:])
+        )
+        ridge_target_length = ridge_length * scale
+        ridge_capacity = int(max(0.0, ridge_target_length - guard * 2.0) // module_pitch_px)
+    else:
+        ridge_capacity = sum(item["capacity"] for item in main_carriers)
+
+    primary_paths = graph.get("primary_paths", [])
+    if graph.get("venation", {}).get("type") == "palmate" and len(primary_paths) >= 3:
+        root_id = graph.get("primary_root_node_id")
+        root_id = int(root_id) if root_id is not None else main_node_ids[0]
+        root = nodes[root_id]
+
+        reachable_nodes = {root_id}
+        reachable_edges: set[int] = set()
+        queue = [root_id]
+        while queue:
+            node_id = queue.pop()
+            for edge_id in incident.get(node_id, []):
+                neighbour = (
+                    int(edges[edge_id]["target"])
+                    if int(edges[edge_id]["source"]) == node_id
+                    else int(edges[edge_id]["source"])
+                )
+                reachable_edges.add(edge_id)
+                if neighbour not in reachable_nodes:
+                    reachable_nodes.add(neighbour)
+                    queue.append(neighbour)
+
+        def point_segment_distance(
+            point: tuple[float, float],
+            start_point: tuple[float, float],
+            end_point: tuple[float, float],
+        ) -> float:
+            dx = end_point[0] - start_point[0]
+            dy = end_point[1] - start_point[1]
+            denominator = dx * dx + dy * dy
+            if denominator <= 1e-9:
+                return math.hypot(point[0] - start_point[0], point[1] - start_point[1])
+            ratio = max(
+                0.0,
+                min(
+                    1.0,
+                    ((point[0] - start_point[0]) * dx + (point[1] - start_point[1]) * dy)
+                    / denominator,
+                ),
+            )
+            nearest = (start_point[0] + ratio * dx, start_point[1] + ratio * dy)
+            return math.hypot(point[0] - nearest[0], point[1] - nearest[1])
+
+        def path_distance(point: tuple[float, float], path: list[tuple[float, float]]) -> float:
+            return min(
+                (
+                    point_segment_distance(point, start_point, end_point)
+                    for start_point, end_point in zip(path, path[1:])
+                ),
+                default=float("inf"),
+            )
+
+        lane_paths = []
+        for path in sorted(primary_paths, key=lambda item: float(item.get("angle_radians", 0.0))):
+            points = [
+                (float(nodes[int(node_id)]["x"]), float(nodes[int(node_id)]["y"]))
+                for node_id in path.get("node_ids", [])
+                if int(node_id) in nodes
+            ]
+            if len(points) >= 2:
+                lane_paths.append(
+                    {
+                        "path_id": int(path.get("id", len(lane_paths))),
+                        "role": str(path.get("role", "radial_primary")),
+                        "angle": float(path.get("angle_radians", 0.0)),
+                        "points": points,
+                        "edge_ids": [],
+                    }
+                )
+
+        protocol_reserved = set(main_edge_ids)
+        if len(ridge) >= 2:
+            for edge_id in reachable_edges:
+                edge = edges[edge_id]
+                source = nodes[int(edge["source"])]
+                target = nodes[int(edge["target"])]
+                midpoint = (
+                    (float(source["x"]) + float(target["x"])) / 2.0,
+                    (float(source["y"]) + float(target["y"])) / 2.0,
+                )
+                if path_distance(midpoint, ridge) <= max(
+                    4.0, float(edge.get("mean_width_px", 1.0)) * 0.65
+                ):
+                    protocol_reserved.add(edge_id)
+
+        for edge_id in sorted(reachable_edges):
+            if edge_id in protocol_reserved or not lane_paths:
+                continue
+            edge = edges[edge_id]
+            if float(edge.get("response_mean", 1.0)) < 0.035 and int(edge.get("order", 6)) >= 5:
+                continue
+            source = nodes[int(edge["source"])]
+            target = nodes[int(edge["target"])]
+            midpoint = (
+                (float(source["x"]) + float(target["x"])) / 2.0,
+                (float(source["y"]) + float(target["y"])) / 2.0,
+            )
+            destination = min(
+                lane_paths,
+                key=lambda lane: path_distance(midpoint, lane["points"]),
+            )
+            destination["edge_ids"].append(edge_id)
+
+        for lane in lane_paths:
+            lane["edge_ids"].sort(
+                key=lambda edge_id: (
+                    math.hypot(
+                        (float(nodes[int(edges[edge_id]["source"])]["x"]) + float(nodes[int(edges[edge_id]["target"])]["x"])) / 2.0 - float(root["x"]),
+                        (float(nodes[int(edges[edge_id]["source"])]["y"]) + float(nodes[int(edges[edge_id]["target"])]["y"])) / 2.0 - float(root["y"]),
+                    ),
+                    int(edges[edge_id].get("order", 6)),
+                    edge_id,
+                )
+            )
+            # Address near and far carriers in a recursive midpoint order.
+            # The first part of a short text therefore covers the whole radial
+            # sector instead of forming one dense patch beside the petiole.
+            radial = lane["edge_ids"]
+            spread: list[int] = []
+            intervals = [(0, len(radial) - 1)] if radial else []
+            while intervals:
+                next_intervals = []
+                for low, high in intervals:
+                    if low > high:
+                        continue
+                    middle = (low + high) // 2
+                    spread.append(radial[middle])
+                    next_intervals.extend(((low, middle - 1), (middle + 1, high)))
+                intervals = next_intervals
+            lane["edge_ids"] = spread
+
+        branches = []
+        chunk_size = 12
+        maximum_chunks = max(
+            (math.ceil(len(lane["edge_ids"]) / chunk_size) for lane in lane_paths),
+            default=0,
+        )
+        for chunk_index in range(maximum_chunks):
+            for lane_index, lane in enumerate(lane_paths):
+                chunk = lane["edge_ids"][chunk_index * chunk_size : (chunk_index + 1) * chunk_size]
+                if not chunk:
+                    continue
+                branch_id = len(branches)
+                branch_carriers = []
+                for edge_id in chunk:
+                    item = carrier(edges[edge_id], "payload", branch_id)
+                    if item:
+                        branch_carriers.append(item)
+                if not branch_carriers:
+                    continue
+                branches.append(
+                    {
+                        "branch_id": branch_id,
+                        "primary_path_id": lane["path_id"],
+                        "primary_role": lane["role"],
+                        "sector_index": lane_index,
+                        "depth_band": chunk_index,
+                        "anchor_node": root_id,
+                        "root_edge_id": chunk[0],
+                        "anchor_projection": round(chunk_index / max(1, maximum_chunks), 6),
+                        "side": -1 if lane["angle"] < 0 else 1,
+                        "edge_ids": chunk,
+                        "capacity": len(branch_carriers),
+                        "carrier_edges": branch_carriers,
+                    }
+                )
+        return {
+            "target_resolution": target_resolution,
+            "module_pitch_px": module_pitch_px,
+            "minimum_stroke_px": minimum_stroke,
+            "minimum_edge_px": minimum_edge,
+            "main_capacity": ridge_capacity,
+            "payload_capacity": sum(branch["capacity"] for branch in branches),
+            "carrier_edge_count": len(main_carriers)
+            + sum(len(branch["carrier_edges"]) for branch in branches),
+            "main_carriers": main_carriers,
+            "branches": branches,
+            "layout": "palmate-sector-round-robin",
+            "excluded_detached_components": len(edges) - len(reachable_edges),
+        }
 
     visited = set(main_edge_ids)
     branches = []

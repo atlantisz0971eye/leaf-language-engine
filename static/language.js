@@ -10,6 +10,8 @@ const state={
   audio:null,
   audioResult:null,
   audioView:"disturbed",
+  analysisView:"primary",
+  analysisPreviews:{},
   runtime:{
     rubbing:{resolutions:[2048,3072,4096,6144,8192],max_resolution:8192,safe_mode:false},
     nmns:{resolutions:[2048,4096,8192,16384]},
@@ -237,7 +239,69 @@ function resetDecision(){
   $("#sound-panel").hidden=true;
   $("#sound-panel").classList.add("locked");
   applySoundButton.disabled=true;
-  setStep(state.specimen?2:1);
+  setStep(state.specimen?3:1);
+}
+
+function showAnalysisView(view){
+  const previews=state.analysisPreviews||{};
+  const fallback=previews.primary||previews.overlay||previews.original||state.specimen?.source_url;
+  const selected=previews[view]||fallback;
+  if(!selected)return;
+  state.analysisView=view;
+  document.querySelectorAll("[data-analysis-view]").forEach((button)=>{
+    button.classList.toggle("active",button.dataset.analysisView===view);
+    button.hidden=!previews[button.dataset.analysisView]&&button.dataset.analysisView!=="original";
+  });
+  $("#analysis-preview").src=selected.startsWith("data:")?selected:`${selected}?v=${Date.now()}`;
+}
+
+function renderAnalysis(specimen,analysis={}){
+  const panel=$("#analysis-panel");
+  const nmns=state.sourceHint==="nmns";
+  panel.hidden=!nmns;
+  if(!nmns)return;
+  state.analysisPreviews={...(specimen.analysis_urls||{}),...(analysis.previews||{})};
+  if(!state.analysisPreviews.original)state.analysisPreviews.original=specimen.source_url;
+  $("#analysis-isolation").textContent=analysis.isolation_confidence!=null?`${Number(analysis.isolation_confidence).toFixed(0)}%`:"Saved";
+  $("#analysis-venation").textContent=(analysis.venation_type||specimen.venation_type||"unknown").replace(/^./,(value)=>value.toUpperCase());
+  const confidence=analysis.main_path_confidence??specimen.main_path_confidence;
+  $("#analysis-confidence").textContent=confidence==null?"—":`${Number(confidence).toFixed(0)}%`;
+  $("#analysis-edges").textContent=analysis.graph_edges??specimen.graph_edges??"—";
+  $("#analysis-status").textContent=specimen.ready===false?"Review the primary vein":"Ready for text";
+  showAnalysisView(state.analysisPreviews.primary?"primary":state.analysisPreviews.overlay?"overlay":"original");
+}
+
+function analysisSettings(){
+  return {
+    max_side:Number($("#analysis-resolution").value),
+    sensitivity:Number($("#analysis-sensitivity").value),
+    contrast_scale:Number($("#analysis-contrast").value),
+    min_component:Number($("#analysis-component").value),
+  };
+}
+
+async function reanalyzeLeaf(){
+  if(state.sourceHint!=="nmns"||!state.specimen)return;
+  const button=$("#reanalyze-leaf");
+  button.disabled=true;$("#analysis-loading").hidden=false;$("#analysis-status").textContent="Analyzing…";
+  try{
+    const payload=await jsonRequest("/api/export",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({filename:state.specimen.id,settings:analysisSettings()}),
+    });
+    const result=payload.result;
+    state.analysisPreviews=result.previews;
+    state.specimen.graph_edges=result.graph.stats.edge_count;
+    state.specimen.branch_anchors=result.graph.stats.secondary_anchor_count;
+    state.specimen.venation_type=result.graph.venation?.type;
+    state.specimen.main_path_confidence=result.graph.venation?.main_path_confidence;
+    renderAnalysis(state.specimen,{
+      previews:result.previews,graph_edges:result.graph.stats.edge_count,
+      venation_type:result.graph.venation?.type,main_path_confidence:result.graph.venation?.main_path_confidence,
+    });
+    $("#analysis-status").textContent="Analysis updated";
+  }catch(error){$("#analysis-status").textContent=error.message;}
+  finally{button.disabled=false;$("#analysis-loading").hidden=true;}
 }
 
 function setResolutionOptions(){
@@ -291,6 +355,7 @@ function renderLeaf(specimen,analysis=null){
     $("#leaf-texture-label").textContent="Texture";
   }
   $("#leaf-size").textContent=`${specimen.width}×${specimen.height}`;
+  renderAnalysis(specimen,analysis||{});
   $("#text-panel").classList.toggle("locked",!ready);
   textInput.disabled=!ready;
   resolutionSelect.disabled=!ready;
@@ -314,6 +379,7 @@ function choosePipeline(sourceHint){
     if(specimen)renderLeaf(specimen);
   }else{
     $("#leaf-result").hidden=true;
+    $("#analysis-panel").hidden=true;
     $("#text-panel").classList.add("locked");
     textInput.disabled=true;resolutionSelect.disabled=true;capacityButton.disabled=true;
     resetDecision();
@@ -418,13 +484,13 @@ function renderCapacity(data){
     $("#sound-panel").hidden=nmns;
     $("#sound-panel").classList.toggle("locked",nmns);
     applySoundButton.disabled=nmns||!state.audio;
-    setStep(3);
+    setStep(4);
   }else{
     $("#export-panel").hidden=true;
     $("#sound-panel").hidden=true;
     exportButton.disabled=true;
     applySoundButton.disabled=true;
-    setStep(2);
+    setStep(3);
   }
 }
 
@@ -514,7 +580,7 @@ function renderAudioResult(result){
   $("#sound-decoded-text").value=recovered;
   $("#sound-decoded-text").hidden=!recovered;
   showAudioMonitor("disturbed");
-  setStep(4);
+  setStep(5);
 }
 
 async function applySound(){
@@ -581,6 +647,14 @@ async function decodeImage(){
 }
 
 document.querySelectorAll("[data-source]").forEach((button)=>button.addEventListener("click",()=>choosePipeline(button.dataset.source)));
+document.querySelectorAll("[data-analysis-view]").forEach((button)=>button.addEventListener("click",()=>showAnalysisView(button.dataset.analysisView)));
+[
+  ["analysis-resolution","analysis-resolution-value"," px"],
+  ["analysis-sensitivity","analysis-sensitivity-value","%"],
+  ["analysis-contrast","analysis-contrast-value"," px"],
+  ["analysis-component","analysis-component-value"," px"],
+].forEach(([inputId,outputId,suffix])=>$("#"+inputId).addEventListener("input",()=>{$("#"+outputId).textContent=`${$("#"+inputId).value}${suffix}`;}));
+$("#reanalyze-leaf").addEventListener("click",reanalyzeLeaf);
 leafFile.addEventListener("change",()=>{$("#file-label").textContent=leafFile.files[0]?.name||"Choose an image";});
 leafSelect.addEventListener("change",()=>{const specimen=state.specimens.find((item)=>item.id===leafSelect.value);if(specimen)renderLeaf(specimen);});
 textInput.addEventListener("input",()=>{$("#text-count").textContent=`${new TextEncoder().encode(textInput.value).length} bytes`;resetDecision();});
@@ -630,3 +704,4 @@ window.addEventListener("resize",()=>drawSoundWave());
 textInput.disabled=true;resolutionSelect.disabled=true;capacityButton.disabled=true;
 drawSoundWave();
 loadLibraries().catch((error)=>{$("#library-count").textContent=error.message;});
+if(new URLSearchParams(location.search).get("panel")==="analysis")setTimeout(()=>$("#analysis-panel").scrollIntoView({behavior:"smooth"}),900);

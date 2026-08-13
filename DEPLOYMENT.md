@@ -12,16 +12,14 @@ are intentionally separated:
 
 1. Run `python3 scripts/prepare_deploy_seed.py` and commit the resulting
    `seed_data` folder.
-2. Push this folder to a private GitHub repository.
+2. Push this folder to the connected GitHub repository.
 3. In Railway, create a service from that repository. Railway will detect the
    root `Dockerfile` and deploy it.
 4. Attach one volume to the service with mount path `/data`.
 5. Add the service variable `LEAF_DATA_DIR=/data`.
-6. Add `LEAF_ACCESS_PASSWORD` with a long shared team password. The health
-   check stays public, while all pages and APIs require that password.
-7. Keep `LEAF_MAX_CONCURRENT_JOBS=1` for the initial four-person test.
-8. On a 1 GB Railway Trial container, set `LEAF_MAX_RUBBING_RESOLUTION=3072`.
-9. Generate a Railway domain and open `/health`. A healthy response reports
+6. Keep `LEAF_MAX_CONCURRENT_JOBS=1` while the service has limited memory.
+7. On a 1 GB Railway Trial container, set `LEAF_MAX_RUBBING_RESOLUTION=3072`.
+8. Generate a Railway domain and open `/health`. A healthy response reports
    `"status": "ok"`.
 
 The first start copies the curated NMNS and rubbing examples into an empty
@@ -40,7 +38,8 @@ volume. Later deployments add missing seeds but never overwrite user data.
 
 - Use one Railway service instance because background job state is currently
   held in process memory.
-- Share the team password only with the four project members.
+- The website and APIs are public. Do not upload private or sensitive material
+  in specimens, text, filenames, or generated archives.
 - Railway Trial safe mode supports leaf-rubbing exports up to 3072 px. NMNS
   vein-graph exports retain their larger output sizes.
 - WAV feature extraction runs in the browser. Only the compact feature array is

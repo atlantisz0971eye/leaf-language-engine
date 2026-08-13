@@ -107,6 +107,9 @@ def _stroke_width(
 def _main_points(graph: dict[str, Any]) -> list[tuple[float, float]]:
     nodes = {int(node["id"]): node for node in graph["nodes"]}
     transform = _graph_transform(graph)
+    ridge = graph.get("main_path", {}).get("pixel_path", [])
+    if len(ridge) >= 2:
+        return [transform((float(x), float(y))) for x, y in ridge]
     return [
         transform((float(nodes[int(node_id)]["x"]), float(nodes[int(node_id)]["y"])))
         for node_id in graph["main_path"]["node_ids"]
