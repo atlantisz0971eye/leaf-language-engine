@@ -18,7 +18,7 @@ are intentionally separated:
 4. Attach one volume to the service with mount path `/data`.
 5. Add the service variable `LEAF_DATA_DIR=/data`.
 6. Keep `LEAF_MAX_CONCURRENT_JOBS=1` while the service has limited memory.
-7. On a 1 GB Railway Trial container, set `LEAF_MAX_RUBBING_RESOLUTION=3072`.
+7. On the Railway Hobby service, set `LEAF_MAX_RUBBING_RESOLUTION=4096`.
 8. Keep `LEAF_ENABLE_NMNS_PIPELINE=0` for the public pixel-only release.
 9. Generate a Railway domain and open `/health`. A healthy response reports
    `"status": "ok"`.

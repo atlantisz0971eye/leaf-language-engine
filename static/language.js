@@ -7,6 +7,7 @@ const state={
   specimen:null,
   document:null,
   audioContext:null,
+  audioLibrary:[],
   audio:null,
   audioResult:null,
   audioView:"disturbed",
@@ -26,6 +27,7 @@ const analyzeLeafButton=$("#analyze-leaf");
 const capacityButton=$("#check-capacity");
 const exportButton=$("#export-jpg");
 const soundFile=$("#sound-file");
+const soundLibrary=$("#sound-library");
 const applySoundButton=$("#apply-sound");
 
 function sleep(milliseconds){return new Promise((resolve)=>setTimeout(resolve,milliseconds));}
@@ -165,6 +167,48 @@ async function analyzeWav(file){
     state.audio=null;
     $("#sound-file-label").textContent="Could not read WAV";
     $("#sound-summary").textContent=error.message;
+  }
+}
+
+async function loadAudioLibrary(){
+  const archive=await jsonRequest("/static/archive/archive.json");
+  const unique=new Map();
+  (archive.entries||[]).forEach((entry)=>{
+    if(entry.audio&&entry.sound&&!unique.has(entry.sound)){
+      unique.set(entry.sound,{
+        name:entry.sound,
+        url:entry.audio,
+        duration:Number(entry.metrics?.duration||0),
+      });
+    }
+  });
+  state.audioLibrary=[...unique.values()];
+  soundLibrary.replaceChildren(new Option("Choose from the rubbing archive", ""));
+  state.audioLibrary.forEach((recording,index)=>{
+    const duration=recording.duration?` · ${formatDuration(recording.duration)}`:"";
+    soundLibrary.append(new Option(`${recording.name}${duration}`,String(index)));
+  });
+  soundLibrary.disabled=!state.audioLibrary.length;
+}
+
+async function analyzeLibraryAudio(index){
+  const recording=state.audioLibrary[Number(index)];
+  if(!recording)return;
+  soundFile.value="";
+  soundLibrary.disabled=true;
+  applySoundButton.disabled=true;
+  $("#sound-file-label").textContent="Upload a WAV";
+  $("#sound-summary").textContent=`Loading ${recording.name}…`;
+  try{
+    const response=await fetch(recording.url);
+    if(!response.ok)throw new Error("Could not load this archive recording.");
+    const blob=await response.blob();
+    await analyzeWav(new File([blob],recording.name,{type:blob.type||"audio/mpeg"}));
+  }catch(error){
+    state.audio=null;
+    $("#sound-summary").textContent=error.message;
+  }finally{
+    soundLibrary.disabled=false;
   }
 }
 
@@ -477,6 +521,7 @@ function renderCapacity(data){
     $("#sound-panel").hidden=nmns;
     $("#sound-panel").classList.toggle("locked",nmns);
     applySoundButton.disabled=nmns||!state.audio;
+    if(!nmns)requestAnimationFrame(()=>requestAnimationFrame(drawSoundWave));
     setStep(4);
   }else{
     $("#export-panel").hidden=true;
@@ -659,9 +704,13 @@ $("#decode-image").addEventListener("click",decodeImage);
 soundFile.addEventListener("change",async()=>{
   const file=soundFile.files[0];
   if(!file)return;
+  soundLibrary.value="";
   if(!file.name.toLowerCase().endsWith(".wav")){$("#sound-summary").textContent="Choose a WAV file.";return;}
   if(file.size>64*1024*1024){$("#sound-summary").textContent="The WAV is over 64 MB.";return;}
   await analyzeWav(file);
+});
+soundLibrary.addEventListener("change",()=>{
+  if(soundLibrary.value!=="")analyzeLibraryAudio(soundLibrary.value);
 });
 applySoundButton.addEventListener("click",applySound);
 document.querySelectorAll("[data-monitor]").forEach((button)=>button.addEventListener("click",()=>showAudioMonitor(button.dataset.monitor)));
@@ -696,5 +745,10 @@ window.addEventListener("resize",()=>drawSoundWave());
 
 textInput.disabled=true;resolutionSelect.disabled=true;capacityButton.disabled=true;
 drawSoundWave();
+loadAudioLibrary().catch((error)=>{
+  soundLibrary.replaceChildren(new Option("Archive recordings unavailable", ""));
+  soundLibrary.disabled=true;
+  $("#sound-summary").textContent=error.message;
+});
 loadLibraries().catch((error)=>{$("#library-count").textContent=error.message;});
 if(new URLSearchParams(location.search).get("panel")==="analysis")setTimeout(()=>$("#analysis-panel").scrollIntoView({behavior:"smooth"}),900);

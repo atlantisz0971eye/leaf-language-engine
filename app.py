@@ -67,8 +67,8 @@ NMNS_PIPELINE_ENABLED = os.environ.get("LEAF_ENABLE_NMNS_PIPELINE", "0").lower()
 }
 RUBBING_RESOLUTIONS = (2048, 3072, 4096, 6144, 8192)
 MAX_RUBBING_RESOLUTION = max(
-    2048,
-    min(8192, int(os.environ.get("LEAF_MAX_RUBBING_RESOLUTION", "8192"))),
+    4096,
+    min(8192, int(os.environ.get("LEAF_MAX_RUBBING_RESOLUTION", "4096"))),
 )
 STYLE_ANALYSIS_CACHE: dict[str, dict] = {}
 BACKGROUND_JOBS: dict[str, dict] = {}
