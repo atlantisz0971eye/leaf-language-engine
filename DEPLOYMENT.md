@@ -19,7 +19,8 @@ are intentionally separated:
 5. Add the service variable `LEAF_DATA_DIR=/data`.
 6. Keep `LEAF_MAX_CONCURRENT_JOBS=1` while the service has limited memory.
 7. On a 1 GB Railway Trial container, set `LEAF_MAX_RUBBING_RESOLUTION=3072`.
-8. Generate a Railway domain and open `/health`. A healthy response reports
+8. Keep `LEAF_ENABLE_NMNS_PIPELINE=0` for the public pixel-only release.
+9. Generate a Railway domain and open `/health`. A healthy response reports
    `"status": "ok"`.
 
 The first start copies the curated NMNS and rubbing examples into an empty
@@ -40,8 +41,8 @@ volume. Later deployments add missing seeds but never overwrite user data.
   held in process memory.
 - The website and APIs are public. Do not upload private or sensitive material
   in specimens, text, filenames, or generated archives.
-- Railway Trial safe mode supports leaf-rubbing exports up to 3072 px. NMNS
-  vein-graph exports retain their larger output sizes.
+- The public release exposes only the leaf-rubbing pixel pipeline. Keep the
+  maximum export resolution proportional to the memory available to the service.
 - WAV feature extraction runs in the browser. Only the compact feature array is
   sent to the service; disturbed PNGs and reports are stored under
   `/data/analysis_output/audio_disturbance`.

@@ -396,21 +396,14 @@ function choosePipeline(sourceHint){
 }
 
 async function loadLibraries(){
-  const [rubbing,nmns,runtime]=await Promise.all([
+  const [rubbing,runtime]=await Promise.all([
     jsonRequest("/api/colour/specimens"),
-    jsonRequest("/api/images"),
     jsonRequest("/api/runtime"),
   ]);
   state.runtime={...state.runtime,...runtime};
   state.libraries.rubbing=(rubbing.specimens||[]).map((item)=>({...item,pipeline:"rubbing"}));
-  state.libraries.nmns=(nmns.images||[]).filter((item)=>item.ready).map((item)=>({
-    ...item,
-    pipeline:"nmns",
-    id:item.id||item.name,
-    name:item.display_name||item.name,
-    source_url:item.source_url||`/source/${encodeURIComponent(item.name)}`,
-  }));
-  choosePipeline(state.sourceHint);
+  state.libraries.nmns=[];
+  choosePipeline("rubbing");
 }
 
 async function uploadLeaf(){

@@ -60,6 +60,11 @@ OPEN_BROWSER = os.environ.get(
     "1" if HOST in {"127.0.0.1", "localhost"} else "0",
 ).lower() in {"1", "true", "yes"}
 MAX_CONCURRENT_JOBS = max(1, int(os.environ.get("LEAF_MAX_CONCURRENT_JOBS", "1")))
+NMNS_PIPELINE_ENABLED = os.environ.get("LEAF_ENABLE_NMNS_PIPELINE", "0").lower() in {
+    "1",
+    "true",
+    "yes",
+}
 RUBBING_RESOLUTIONS = (2048, 3072, 4096, 6144, 8192)
 MAX_RUBBING_RESOLUTION = max(
     2048,
@@ -339,8 +344,7 @@ def prepare_colour_document(
         "max_resolution": MAX_RUBBING_RESOLUTION,
         "safe_mode": MAX_RUBBING_RESOLUTION < max(RUBBING_RESOLUTIONS),
         "message": (
-            f"This server safely supports leaf-rubbing exports up to {MAX_RUBBING_RESOLUTION}px. "
-            "NMNS vein-graph exports keep their full resolution range."
+            f"This server safely supports leaf-rubbing exports up to {MAX_RUBBING_RESOLUTION}px."
         ),
     }
     for row in capacity["resolutions"]:
@@ -360,7 +364,7 @@ def prepare_colour_document(
         capacity["minimum_safe_resolution"] = None
         capacity["recommendation"] = (
             f"This text needs more space than the current server-safe limit of "
-            f"{MAX_RUBBING_RESOLUTION}px. Shorten the text or use an NMNS scan."
+            f"{MAX_RUBBING_RESOLUTION}px. Shorten the text or choose a leaf with more usable texture."
         )
     else:
         safe = next(row for row in capacity["resolutions"] if row["exportable"])
@@ -1100,12 +1104,15 @@ class LeafToolHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path == "/health":
+            features = ["rubbing", "audio-hard-decode", "jpg-readback"]
+            if NMNS_PIPELINE_ENABLED:
+                features.extend(["nmns", "png-readback"])
             self._json(
                 {
                     "status": "ok",
                     "service": "leaf-language-engine",
                     "revision": os.environ.get("RAILWAY_GIT_COMMIT_SHA", "local")[:12],
-                    "features": ["rubbing", "nmns", "audio-hard-decode", "png-readback"],
+                    "features": features,
                     "images": len(image_files()),
                     "data_persistent": DATA_DIR != LOCAL_PROJECT_DIR,
                 }
@@ -1130,6 +1137,9 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 self.send_error(404)
             return
         if path == "/api/images":
+            if not NMNS_PIPELINE_ENABLED:
+                self._json({"images": [], "disabled": True})
+                return
             items = []
             for image_path in image_files():
                 image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
@@ -1157,6 +1167,7 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                         "safe_mode": MAX_RUBBING_RESOLUTION < max(RUBBING_RESOLUTIONS),
                     },
                     "nmns": {
+                        "enabled": NMNS_PIPELINE_ENABLED,
                         "resolutions": [2048, 4096, 8192, 16384],
                     },
                 }
@@ -1248,6 +1259,8 @@ class LeafToolHandler(BaseHTTPRequestHandler):
             if self.path == "/api/jobs/specimen":
                 raw, filename = decode_specimen_source_upload(body)
                 source_hint = str(body.get("source_hint", "auto"))
+                if source_hint == "nmns" and not NMNS_PIPELINE_ENABLED:
+                    raise ValueError("The NMNS vein pipeline is temporarily offline.")
                 identifier = create_background_job("specimen")
                 launch_background_job(
                     identifier,
@@ -1283,6 +1296,8 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 if not text:
                     raise ValueError("Enter some text first.")
                 if pipeline == "nmns":
+                    if not NMNS_PIPELINE_ENABLED:
+                        raise ValueError("The NMNS vein pipeline is temporarily offline.")
                     safe_image(sample)
                     identifier = create_background_job("nmns-document")
                     target = run_nmns_document_job
@@ -1369,6 +1384,8 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 return
 
             if self.path == "/api/specimens/upload":
+                if not NMNS_PIPELINE_ENABLED:
+                    raise ValueError("The NMNS vein pipeline is temporarily offline.")
                 filename, raw, decoded_image = decode_upload(body)
                 destination = IMAGE_DIR / filename
                 created = not destination.exists()
@@ -1407,6 +1424,8 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 return
 
             if self.path == "/api/analyze":
+                if not NMNS_PIPELINE_ENABLED:
+                    raise ValueError("The NMNS vein pipeline is temporarily offline.")
                 image_path = safe_image(str(body.get("filename", "")))
                 settings = AnalysisSettings.from_dict(body.get("settings"))
                 result = analyze_image(image_path, settings)
@@ -1496,6 +1515,8 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 return
 
             if self.path == "/api/language/document":
+                if not NMNS_PIPELINE_ENABLED:
+                    raise ValueError("The NMNS vein pipeline is temporarily offline.")
                 sample_filename = str(body.get("sample", "")).strip()
                 sample_metrics = None
                 sample_graph = None
@@ -1524,6 +1545,8 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 return
 
             if self.path == "/api/language/document/decode-png":
+                if not NMNS_PIPELINE_ENABLED:
+                    raise ValueError("The NMNS vein pipeline is temporarily offline.")
                 result = decode_encoding_png(
                     decode_png_payload(body),
                     prepared_specimen_graphs(),
@@ -1533,6 +1556,8 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 return
 
             if self.path == "/api/language/document/export":
+                if not NMNS_PIPELINE_ENABLED:
+                    raise ValueError("The NMNS vein pipeline is temporarily offline.")
                 packet = body.get("packet", body)
                 if not isinstance(packet, dict):
                     raise ValueError("The document packet must be a JSON object.")
@@ -1557,6 +1582,8 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 return
 
             if self.path == "/api/export":
+                if not NMNS_PIPELINE_ENABLED:
+                    raise ValueError("The NMNS vein pipeline is temporarily offline.")
                 image_path = safe_image(str(body.get("filename", "")))
                 settings = AnalysisSettings.from_dict(body.get("settings"))
                 result = analyze_image(image_path, settings)
@@ -1566,6 +1593,8 @@ class LeafToolHandler(BaseHTTPRequestHandler):
                 return
 
             if self.path == "/api/export-all":
+                if not NMNS_PIPELINE_ENABLED:
+                    raise ValueError("The NMNS vein pipeline is temporarily offline.")
                 settings = AnalysisSettings.from_dict(body.get("settings"))
                 rows = []
                 for image_path in image_files():
