@@ -8,6 +8,7 @@ const state={
   document:null,
   audioContext:null,
   audioLibrary:[],
+  audioPreviewObjectUrl:null,
   audio:null,
   audioResult:null,
   audioView:"disturbed",
@@ -28,6 +29,7 @@ const capacityButton=$("#check-capacity");
 const exportButton=$("#export-jpg");
 const soundFile=$("#sound-file");
 const soundLibrary=$("#sound-library");
+const soundPreview=$("#sound-preview");
 const applySoundButton=$("#apply-sound");
 
 function sleep(milliseconds){return new Promise((resolve)=>setTimeout(resolve,milliseconds));}
@@ -75,6 +77,29 @@ function resetAudioResult(){
   $("#audio-progress").hidden=true;
   $("#audio-progress-bar").value=0;
   document.querySelectorAll("[data-monitor]").forEach((button)=>button.classList.toggle("active",button.dataset.monitor==="disturbed"));
+}
+
+function clearSoundPreview(){
+  soundPreview.pause();
+  soundPreview.removeAttribute("src");
+  soundPreview.load();
+  if(state.audioPreviewObjectUrl){
+    URL.revokeObjectURL(state.audioPreviewObjectUrl);
+    state.audioPreviewObjectUrl=null;
+  }
+  $("#sound-preview-wrap").hidden=true;
+}
+
+function setSoundPreview(source,name){
+  clearSoundPreview();
+  if(typeof source==="string")soundPreview.src=source;
+  else{
+    state.audioPreviewObjectUrl=URL.createObjectURL(source);
+    soundPreview.src=state.audioPreviewObjectUrl;
+  }
+  $("#sound-preview-name").textContent=name;
+  $("#sound-preview-wrap").hidden=false;
+  soundPreview.load();
 }
 
 function drawSoundWave(){
@@ -195,6 +220,7 @@ async function analyzeLibraryAudio(index){
   const recording=state.audioLibrary[Number(index)];
   if(!recording)return;
   soundFile.value="";
+  setSoundPreview(recording.url,recording.name);
   soundLibrary.disabled=true;
   applySoundButton.disabled=true;
   $("#sound-file-label").textContent="Upload a WAV";
@@ -707,10 +733,12 @@ soundFile.addEventListener("change",async()=>{
   soundLibrary.value="";
   if(!file.name.toLowerCase().endsWith(".wav")){$("#sound-summary").textContent="Choose a WAV file.";return;}
   if(file.size>64*1024*1024){$("#sound-summary").textContent="The WAV is over 64 MB.";return;}
+  setSoundPreview(file,file.name);
   await analyzeWav(file);
 });
 soundLibrary.addEventListener("change",()=>{
   if(soundLibrary.value!=="")analyzeLibraryAudio(soundLibrary.value);
+  else clearSoundPreview();
 });
 applySoundButton.addEventListener("click",applySound);
 document.querySelectorAll("[data-monitor]").forEach((button)=>button.addEventListener("click",()=>showAudioMonitor(button.dataset.monitor)));
@@ -742,6 +770,9 @@ $("#export-audio-report").addEventListener("click",()=>{
   downloadOutput(state.audioResult?.experiment_url,`${sample}_audio_experiment.json`).catch((error)=>{$("#sound-decode-status").textContent=error.message;});
 });
 window.addEventListener("resize",()=>drawSoundWave());
+window.addEventListener("beforeunload",()=>{
+  if(state.audioPreviewObjectUrl)URL.revokeObjectURL(state.audioPreviewObjectUrl);
+});
 
 textInput.disabled=true;resolutionSelect.disabled=true;capacityButton.disabled=true;
 drawSoundWave();
